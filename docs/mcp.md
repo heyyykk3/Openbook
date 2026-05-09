@@ -2,6 +2,10 @@
 
 OpenBook supports the Model Context Protocol (MCP) via stdio transport.
 
+Status: Codex/Cursor/Claude config generation is implemented and covered by
+tests. Full end-to-end validation inside every client is still an alpha launch
+task; use `--dry-run` first if you want to inspect the exact config.
+
 ## Install For A Client
 
 Project-pinned MCP installs are the recommended path. They set

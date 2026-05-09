@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="200" viewBox="0 0 920 200" role="img" aria-label="Mean Latency Per Benchmark Item">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#17202a}
+.title{font-size:22px;font-weight:700}
+.label{font-size:13px}
+.value{font-size:13px;font-weight:700}
+.axis{stroke:#d5d8dc;stroke-width:1}
+.bar{fill:#2563eb}
+.bg{fill:#eef2f7}
+</style>
+<rect width="920" height="200" fill="#ffffff"/>
+<text class="title" x="24" y="34">Mean Latency Per Benchmark Item</text>
+<line class="axis" x1="230" y1="54" x2="830" y2="54"/>
+<text class="label" x="24" y="88">Ingest</text>
+<rect class="bg" x="230" y="72" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="72" width="600" height="22" rx="3"/>
+<text class="value" x="844" y="88">55.8252 ms</text>
+<text class="label" x="24" y="130">Search</text>
+<rect class="bg" x="230" y="114" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="114" width="34" height="22" rx="3"/>
+<text class="value" x="844" y="130">3.1937 ms</text>
+</svg>

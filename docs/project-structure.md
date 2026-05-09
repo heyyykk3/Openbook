@@ -4,19 +4,21 @@ OpenBook keeps the repository small and release-focused.
 
 ```text
 Openbook/
-├── src/openbook/                 # Python package
-│   ├── cli/                      # Click CLI entrypoint
-│   ├── core/                     # SQLite, memory, search, context packs
-│   ├── mcp/                      # MCP stdio server
-│   ├── providers/                # Embedding and LLM providers
-│   └── server/                   # Reserved for future runtime/server work
-├── tests/                        # Unit and benchmark-harness tests
-├── docs/                         # User and release documentation
-├── benchmarks/README.md          # Benchmark entry points and output contract
-├── benchmarks/longmemeval/       # Reproducible benchmark harness
-├── .github/                      # CI and contribution templates
-├── pyproject.toml                # Package metadata and dependencies
-└── README.md                     # Project overview and quickstart
+|-- src/openbook/                    # Python package
+|   |-- benchmarks/                  # Packaged no-key benchmark helpers
+|   |-- cli/                         # Click CLI entrypoint
+|   |-- core/                        # SQLite, memory, search, context packs
+|   |-- mcp/                         # MCP stdio server
+|   |-- providers/                   # Embedding and LLM providers
+|   `-- server/                      # Reserved for future runtime/server work
+|-- tests/                           # Unit and benchmark-harness tests
+|-- docs/                            # User and release documentation
+|-- benchmarks/README.md             # Benchmark entry points and output contract
+|-- benchmarks/longmemeval/          # Reproducible benchmark harness
+|-- benchmarks/resource_benchmark.py # Source checkout wrapper
+|-- .github/                         # CI and contribution templates
+|-- pyproject.toml                   # Package metadata and dependencies
+`-- README.md                        # Project overview and quickstart
 ```
 
 Ignored local state:
@@ -26,6 +28,7 @@ Ignored local state:
 - `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`
 - `benchmarks/**/data/`
 - `benchmarks/**/results/`
+- `benchmarks/**/work/`
 - `.env`
 
 ## Public Repo Pattern

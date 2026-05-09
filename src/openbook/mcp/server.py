@@ -10,26 +10,30 @@ from pathlib import Path
 from typing import Any, Optional, cast
 
 from openbook.core.context_pack import build_context_pack
-from openbook.core.db import get_connection
+from openbook.core.config import Config
+from openbook.core.db import get_connection, initialize_database
 from openbook.core.memory import get_review_queue, remember
 from openbook.core.project import detect_project_root
 from openbook.core.search import get_project_brief
+from openbook.core.security import ensure_openbookignore
 
 
 def _send(msg: dict[str, Any]) -> None:
-    data = json.dumps(msg)
-    sys.stdout.write(f"Content-Length: {len(data)}\r\n\r\n{data}")
-    sys.stdout.flush()
+    data = json.dumps(msg).encode("utf-8")
+    stdout = cast(Any, sys.stdout).buffer
+    stdout.write(f"Content-Length: {len(data)}\r\n\r\n".encode("ascii") + data)
+    stdout.flush()
 
 
 def _recv() -> Optional[dict[str, Any]]:
-    line = sys.stdin.readline()
+    stdin = cast(Any, sys.stdin).buffer
+    line = stdin.readline()
     if not line:
         return None
-    if line.startswith("Content-Length: "):
-        length = int(line[len("Content-Length: "):].strip())
-        sys.stdin.readline()  # empty line
-        data = sys.stdin.read(length)
+    if line.startswith(b"Content-Length: "):
+        length = int(line[len(b"Content-Length: "):].strip())
+        stdin.readline()  # empty line
+        data = stdin.read(length).decode("utf-8")
         return cast(dict[str, Any], json.loads(data))
     return None
 
@@ -44,6 +48,9 @@ def _lastrowid(cur: Any) -> int:
 def _get_project_info() -> tuple[Path, Any, int]:
     configured_root = os.environ.get("OPENBOOK_PROJECT")
     root = Path(configured_root).resolve() if configured_root else detect_project_root()
+    initialize_database(root)
+    Config.create_default(root)
+    ensure_openbookignore(root)
     conn = get_connection(root)
     root_str = str(root.resolve())
     row = conn.execute("SELECT id FROM projects WHERE root_path = ?", (root_str,)).fetchone()
@@ -159,24 +166,6 @@ TOOLS = {
 
 
 def run_mcp_server() -> None:
-    # Send initialize response first
-    msg = _recv()
-    if msg and msg.get("method") == "initialize":
-        _send({
-            "jsonrpc": "2.0",
-            "id": msg.get("id"),
-            "result": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {"tools": {}},
-                "serverInfo": {"name": "openbook", "version": "0.1.0"},
-            },
-        })
-
-    _send({
-        "jsonrpc": "2.0",
-        "method": "notifications/initialized",
-    })
-
     while True:
         msg = _recv()
         if msg is None:
@@ -184,6 +173,21 @@ def run_mcp_server() -> None:
 
         method = msg.get("method", "")
         req_id = msg.get("id")
+
+        if method == "initialize":
+            _send({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "openbook", "version": "0.1.0"},
+                },
+            })
+            continue
+
+        if method == "notifications/initialized":
+            continue
 
         if method == "tools/list":
             _send({
@@ -197,13 +201,18 @@ def run_mcp_server() -> None:
             params = msg.get("params", {})
             tool_name = params.get("name", "")
             arguments = params.get("arguments", {})
-            result = _handle_tool(tool_name, arguments)
+            is_error = False
+            try:
+                result = _handle_tool(tool_name, arguments)
+            except Exception as e:
+                is_error = True
+                result = str(e)
             _send({
                 "jsonrpc": "2.0",
                 "id": req_id,
                 "result": {
                     "content": [{"type": "text", "text": result}],
-                    "isError": False,
+                    "isError": is_error,
                 },
             })
             continue
@@ -218,98 +227,101 @@ def run_mcp_server() -> None:
 
 def _handle_tool(name: str, arguments: dict[str, Any]) -> str:
     root, conn, project_id = _get_project_info()
-    agent_id = _get_agent_id(conn, project_id)
+    try:
+        agent_id = _get_agent_id(conn, project_id)
 
-    if name == "openbook_remember":
-        memory_id = remember(
-            conn=conn,
-            project_id=project_id,
-            content=arguments["content"],
-            memory_type=arguments.get("memory_type", "fact"),
-            title=arguments.get("title"),
-            summary=arguments.get("summary"),
-            chapter=arguments.get("chapter"),
-            tags=arguments.get("tags"),
-            agent_id=agent_id,
-        )
-        return f"Stored memory {memory_id}"
+        if name == "openbook_remember":
+            memory_id = remember(
+                conn=conn,
+                project_id=project_id,
+                content=arguments["content"],
+                memory_type=arguments.get("memory_type", "fact"),
+                title=arguments.get("title"),
+                summary=arguments.get("summary"),
+                chapter=arguments.get("chapter"),
+                tags=arguments.get("tags"),
+                agent_id=agent_id,
+            )
+            return f"Stored memory {memory_id}"
 
-    if name == "openbook_search":
-        pack = build_context_pack(
-            conn=conn,
-            project_id=project_id,
-            query=arguments["query"],
-            budget=arguments.get("budget", "normal"),
-            chapter=arguments.get("chapter"),
-            memory_type=arguments.get("memory_type"),
-            tags=arguments.get("tags"),
-            agent_id=agent_id,
-        )
-        return pack.to_text()
+        if name == "openbook_search":
+            pack = build_context_pack(
+                conn=conn,
+                project_id=project_id,
+                query=arguments["query"],
+                budget=arguments.get("budget", "normal"),
+                chapter=arguments.get("chapter"),
+                memory_type=arguments.get("memory_type"),
+                tags=arguments.get("tags"),
+                agent_id=agent_id,
+            )
+            return pack.to_text()
 
-    if name == "openbook_brief":
-        brief = get_project_brief(conn, project_id)
-        lines = [f"# {brief.get('project_name', 'Unknown')}"]
-        for section in ["commands", "warnings", "decisions", "cover_memories"]:
-            items = brief.get(section, [])
-            if items:
-                lines.append(f"\n## {section.replace('_', ' ').title()}")
-                for item in items:
-                    lines.append(f"- {item.get('summary', item.get('title', str(item)))}")
-        return "\n".join(lines)
+        if name == "openbook_brief":
+            brief = get_project_brief(conn, project_id)
+            lines = [f"# {brief.get('project_name', 'Unknown')}"]
+            for section in ["commands", "warnings", "decisions", "cover_memories"]:
+                items = brief.get(section, [])
+                if items:
+                    lines.append(f"\n## {section.replace('_', ' ').title()}")
+                    for item in items:
+                        lines.append(f"- {item.get('summary', item.get('title', str(item)))}")
+            return "\n".join(lines)
 
-    if name == "openbook_handoff":
-        pack = build_context_pack(
-            conn=conn,
-            project_id=project_id,
-            query="handoff context",
-            budget="tiny",
-            agent_id=agent_id,
-        )
-        return pack.to_text()
+        if name == "openbook_handoff":
+            pack = build_context_pack(
+                conn=conn,
+                project_id=project_id,
+                query="handoff context",
+                budget="tiny",
+                agent_id=agent_id,
+            )
+            return pack.to_text()
 
-    if name == "openbook_cite":
-        memory_id = arguments["memory_id"]
-        cur = conn.execute(
-            """
-            INSERT INTO citations (project_id, file_path, line_start, line_end, commit_hash, url, quote)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                project_id,
-                arguments.get("file_path"),
-                arguments.get("line_start"),
-                arguments.get("line_end"),
-                arguments.get("commit_hash"),
-                arguments.get("url"),
-                arguments.get("quote"),
-            ),
-        )
-        citation_id = cur.lastrowid
-        conn.execute(
-            "UPDATE memories SET citation_id = ? WHERE id = ? AND project_id = ?",
-            (citation_id, memory_id, project_id),
-        )
-        return f"Added citation {citation_id} to memory {memory_id}"
+        if name == "openbook_cite":
+            memory_id = arguments["memory_id"]
+            cur = conn.execute(
+                """
+                INSERT INTO citations (project_id, file_path, line_start, line_end, commit_hash, url, quote)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    project_id,
+                    arguments.get("file_path"),
+                    arguments.get("line_start"),
+                    arguments.get("line_end"),
+                    arguments.get("commit_hash"),
+                    arguments.get("url"),
+                    arguments.get("quote"),
+                ),
+            )
+            citation_id = cur.lastrowid
+            conn.execute(
+                "UPDATE memories SET citation_id = ? WHERE id = ? AND project_id = ?",
+                (citation_id, memory_id, project_id),
+            )
+            return f"Added citation {citation_id} to memory {memory_id}"
 
-    if name == "openbook_review":
-        queue = get_review_queue(conn, project_id)
-        if not queue:
-            return "No pending proposals."
-        lines = ["Pending proposals:"]
-        for item in queue:
-            lines.append(f"- [{item['id']}] {item['type']}: {item['summary'] or item['content'][:80]}")
-        return "\n".join(lines)
+        if name == "openbook_review":
+            queue = get_review_queue(conn, project_id)
+            if not queue:
+                return "No pending proposals."
+            lines = ["Pending proposals:"]
+            for item in queue:
+                lines.append(f"- [{item['id']}] {item['type']}: {item['summary'] or item['content'][:80]}")
+            return "\n".join(lines)
 
-    if name == "openbook_status":
-        counts = conn.execute(
-            "SELECT COUNT(*) as c FROM memories WHERE project_id = ? AND status = 'approved'",
-            (project_id,),
-        ).fetchone()["c"]
-        pending = conn.execute(
-            "SELECT COUNT(*) as c FROM review_queue WHERE project_id = ? AND status = 'pending'",
-            (project_id,),
-        ).fetchone()["c"]
-        return f"Project: {root.name}\nApproved memories: {counts}\nPending reviews: {pending}"
+        if name == "openbook_status":
+            counts = conn.execute(
+                "SELECT COUNT(*) as c FROM memories WHERE project_id = ? AND status = 'approved'",
+                (project_id,),
+            ).fetchone()["c"]
+            pending = conn.execute(
+                "SELECT COUNT(*) as c FROM review_queue WHERE project_id = ? AND status = 'pending'",
+                (project_id,),
+            ).fetchone()["c"]
+            return f"Project: {root.name}\nApproved memories: {counts}\nPending reviews: {pending}"
 
-    return f"Unknown tool: {name}"
+        raise ValueError(f"Unknown tool: {name}")
+    finally:
+        conn.close()

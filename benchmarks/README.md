@@ -20,7 +20,10 @@ published score should include:
 | Benchmark | Path | Status | What It Measures |
 | --- | --- | --- | --- |
 | LongMemEval | `benchmarks/longmemeval/` | Active | Long-term memory retrieval and optional QA |
-| Resource benchmark | `benchmarks/resource_benchmark.py` | Active | DB size, latency, context size, process memory |
+| Resource benchmark | `openbook benchmark resource` or `benchmarks/resource_benchmark.py` | Active | DB size, latency, context size, process memory |
+
+Published clean reports live under `benchmarks/published/`. Ignored scratch
+runs live under `benchmarks/**/results/`.
 
 ## Quick Smoke Test
 
@@ -79,6 +82,12 @@ and completed records will be skipped.
 ## Resource Footprint
 
 No API key required:
+
+```bash
+openbook benchmark resource --memories 100 --searches 20
+```
+
+Source checkout wrapper:
 
 ```bash
 python benchmarks/resource_benchmark.py \

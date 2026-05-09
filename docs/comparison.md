@@ -75,3 +75,6 @@ This document relies on public docs and project pages current as of 2026-05-09:
 - Zep/Graphiti docs describe temporal knowledge graphs for agentic applications.
 - Letta Code docs describe a stateful coding agent with git-backed Markdown memory.
 - Memento naming is fragmented; evaluate the exact repository/version before making direct claims.
+
+For benchmark-specific competitor numbers and claim boundaries, see
+[competitive-benchmark-landscape.md](competitive-benchmark-landscape.md).

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -28,12 +32,34 @@ from openbook.core.mcp_install import (
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import search_memories
 from openbook.core.security import ensure_openbookignore, scan_for_secrets
+from openbook.mcp.server import _handle_tool
 from openbook.providers.embeddings import (
     GeminiEmbeddingProvider,
     NoneEmbeddingProvider,
     get_embedding_provider,
 )
 from openbook.providers.llm import GeminiLLMProvider, NoneLLMProvider, get_llm_provider
+
+
+def _mcp_frame(message: dict[str, object]) -> bytes:
+    body = json.dumps(message).encode("utf-8")
+    return b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n\r\n" + body
+
+
+def _read_mcp_frame(stdout) -> dict[str, object]:
+    header = stdout.readline()
+    if not header:
+        raise RuntimeError("MCP server returned no response")
+    while header in (b"\r\n", b"\n"):
+        header = stdout.readline()
+    prefix = b"Content-Length: "
+    if not header.startswith(prefix):
+        raise RuntimeError(f"Unexpected MCP header: {header!r}")
+    length = int(header[len(prefix):].strip())
+    blank = stdout.readline()
+    if blank not in (b"\r\n", b"\n"):
+        raise RuntimeError(f"Unexpected MCP frame separator: {blank!r}")
+    return json.loads(stdout.read(length).decode("utf-8"))
 
 
 @pytest.fixture
@@ -108,6 +134,31 @@ class TestInit:
 
         assert result.exit_code == 0
         assert "OpenBook smoke test passed" in result.output
+
+    def test_benchmark_resource_command_writes_reports(self, tmp_path):
+        report_dir = tmp_path / "resource-report"
+        work_dir = tmp_path / "resource-work"
+        runner = CliRunner()
+
+        result = runner.invoke(
+            cli,
+            [
+                "benchmark",
+                "resource",
+                "--memories",
+                "8",
+                "--searches",
+                "3",
+                "--report-dir",
+                str(report_dir),
+                "--work-dir",
+                str(work_dir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (report_dir / "summary.md").exists()
+        assert (report_dir / "results.json").exists()
 
 
 class TestSchema:
@@ -287,6 +338,52 @@ class TestMCPInstall:
         with pytest.raises(ValueError):
             normalize_client("unknown")
 
+    def test_unknown_mcp_tool_raises_error(self, temp_project, monkeypatch):
+        monkeypatch.setenv("OPENBOOK_PROJECT", str(temp_project))
+
+        with pytest.raises(ValueError, match="Unknown tool"):
+            _handle_tool("openbook_missing", {})
+
+    def test_mcp_stdio_initializes_and_lists_tools(self, tmp_path):
+        root = tmp_path / "mcp-stdio-project"
+        root.mkdir()
+        (root / ".git").mkdir()
+        env = os.environ.copy()
+        env["OPENBOOK_PROJECT"] = str(root)
+
+        process = subprocess.Popen(
+            [sys.executable, "-m", "openbook.cli.main", "mcp"],
+            cwd=Path.cwd(),
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            assert process.stdin is not None
+            assert process.stdout is not None
+            process.stdin.write(
+                _mcp_frame({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+            )
+            process.stdin.write(
+                _mcp_frame({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            )
+            process.stdin.write(
+                _mcp_frame({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+            )
+            process.stdin.flush()
+
+            initialize_response = _read_mcp_frame(process.stdout)
+            tools_response = _read_mcp_frame(process.stdout)
+
+            assert initialize_response["result"]["serverInfo"]["name"] == "openbook"
+            assert len(tools_response["result"]["tools"]) >= 7
+        finally:
+            if process.stdin:
+                process.stdin.close()
+            process.terminate()
+            process.wait(timeout=5)
+
 
 class TestProviders:
     def test_none_embedding(self):
@@ -366,9 +463,11 @@ class TestSecurity:
         assert "api_key" in findings or "openai_key" in findings
 
     def test_secret_quarantine(self, conn, project_id):
-        mid = remember(conn, project_id, "secret: password12345678", memory_type="fact")
-        row = conn.execute("SELECT status FROM memories WHERE id = ?", (mid,)).fetchone()
+        mid = remember(conn, project_id, "password: supersecret123", memory_type="fact")
+        row = conn.execute("SELECT status, content FROM memories WHERE id = ?", (mid,)).fetchone()
         assert row["status"] == "quarantined"
+        assert "supersecret123" not in row["content"]
+        assert "[REDACTED:password]" in row["content"]
 
     def test_duplicate_prevention(self, conn, project_id):
         mid1 = remember(conn, project_id, "Duplicate prevention test", memory_type="fact")

@@ -7,6 +7,7 @@ import sqlite3
 from typing import Any, Optional
 
 from openbook.core.models import MemoryCard, parse_tags
+from openbook.core.security import redact_secrets
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
@@ -109,11 +110,12 @@ def search_memories(
         if row["url"]:
             citation_parts.append(row["url"])
         if row["quote"]:
-            citation_parts.append(f'"{row["quote"][:200]}"')
+            citation_parts.append(f'"{redact_secrets(row["quote"])[:200]}"')
         citation_str = " | ".join(citation_parts) if citation_parts else None
 
         trust_label = _trust_label(row["trust_score"])
-        summary = row["summary"] or row["content"][:200]
+        summary = redact_secrets(row["summary"] or row["content"][:200])
+        raw_excerpt = redact_secrets(row["content"])
         cards.append(
             MemoryCard(
                 rank=idx,
@@ -123,7 +125,7 @@ def search_memories(
                 tags=parse_tags(row["tags_json"]),
                 trust=trust_label,
                 citation=citation_str,
-                raw_excerpt=row["content"] if len(row["content"]) <= 800 else row["content"][:800] + "...",
+                raw_excerpt=raw_excerpt if len(raw_excerpt) <= 800 else raw_excerpt[:800] + "...",
             )
         )
     return cards
@@ -179,6 +181,6 @@ def _memory_preview(row: sqlite3.Row) -> dict[str, Any]:
         "id": row["id"],
         "type": row["type"],
         "title": row["title"],
-        "summary": row["summary"] or row["content"][:200],
+        "summary": redact_secrets(row["summary"] or row["content"][:200]),
         "tags": parse_tags(row["tags_json"]),
     }

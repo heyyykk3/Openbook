@@ -4,6 +4,8 @@
 
 OpenBook is a local-first, provider-agnostic, database-backed memory and RAG system for coding agents. It gives Codex, Claude Code, Cursor, OpenCode, Gemini CLI, Windsurf, and other MCP-compatible tools a shared project memory without forcing agents to read large Markdown or JSON files.
 
+Status: **v0.1.0-alpha candidate**. The core no-key SQLite/FTS workflow is usable now. Vector retrieval and provider-backed QA are available in the benchmark/provider layer first; normal `remember` and `search` commands currently use SQLite FTS.
+
 ## Why OpenBook?
 
 Most coding agents today either:
@@ -19,7 +21,7 @@ OpenBook solves this by turning a repo into a **living, searchable, citation-bac
 - **SQLite-first**: Source of truth is SQLite + FTS5; Markdown/JSON are optional exports
 - **Token-efficient**: Retrieval returns small, budgeted context packs, not wall-of-text dumps
 - **Citation-backed**: Every memory can cite file paths, commits, terminal sessions, and URLs
-- **Provider-agnostic**: Works without embeddings; optionally uses Ollama, Gemini, OpenAI-compatible APIs, or sentence-transformers
+- **Provider-aware**: Works without embeddings; benchmark/provider hooks support Ollama, Gemini, OpenAI-compatible APIs, and sentence-transformers
 - **Multi-agent safe**: Concurrent reads via WAL; serialized writes; tracked agent identity
 
 ## Quickstart
@@ -141,6 +143,12 @@ See [docs/architecture.md](docs/architecture.md).
 
 OpenBook starts with LongMemEval, a standard long-term memory benchmark.
 
+Run the installed no-key resource benchmark:
+
+```bash
+openbook benchmark resource --memories 100 --searches 20
+```
+
 Run the included sample:
 
 ```bash
@@ -192,6 +200,8 @@ See [benchmarks/README.md](benchmarks/README.md) for runnable entry points,
 publishable score.
 See [docs/resource-benchmarks.md](docs/resource-benchmarks.md) for local
 footprint measurements.
+See [docs/competitive-benchmark-landscape.md](docs/competitive-benchmark-landscape.md)
+for the current head-to-head benchmark landscape and claim boundary.
 
 ## Release Plan
 
@@ -206,8 +216,8 @@ See [docs/releasing.md](docs/releasing.md) for tag and PyPI release steps.
 ## Security
 
 - `.openbookignore` prevents indexing secrets and build artifacts
-- Secret scanning quarantines suspected secrets before storage
-- Redaction in context packs
+- Secret scanning redacts and quarantines suspected secrets before storage
+- Redaction in search results and context packs
 - Full local wipe supported
 
 See [docs/security.md](docs/security.md).

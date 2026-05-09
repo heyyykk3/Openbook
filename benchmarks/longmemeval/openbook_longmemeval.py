@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
+import platform
 import statistics
+import subprocess
 import sys
 import tempfile
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -29,6 +33,7 @@ SRC_ROOT = REPO_ROOT / "src"
 if SRC_ROOT.exists():
     sys.path.insert(0, str(SRC_ROOT))
 
+from openbook import __version__  # noqa: E402
 from openbook.core.config import Config  # noqa: E402
 from openbook.core.db import get_connection, initialize_database  # noqa: E402
 from openbook.core.memory import remember  # noqa: E402
@@ -272,6 +277,7 @@ def run_benchmark(
     return {
         "benchmark": "LongMemEval retrieval",
         "dataset": str(dataset_path),
+        "metadata": build_run_metadata(dataset_path),
         "track": "qa" if qa else "retrieval",
         "retrieval_mode": retrieval_mode,
         "k_values": k_values,
@@ -289,6 +295,39 @@ def run_benchmark(
         "by_question_type": summarize_by_question_type(records, k_values),
         "records": records,
     }
+
+
+def build_run_metadata(dataset_path: Path) -> dict[str, Any]:
+    return {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "openbook_version": __version__,
+        "git_commit": detect_git_commit(),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "dataset_sha256": sha256_file(dataset_path),
+    }
+
+
+def detect_git_commit() -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return completed.stdout.strip() or None
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _get_project_id(conn: Any, project_root: Path) -> int:
@@ -935,6 +974,7 @@ def _summary_csv_row(group: str, summary: dict[str, Any], fields: list[str]) -> 
 
 def build_summary_markdown(results: dict[str, Any]) -> str:
     overall = results["overall"]
+    metadata = results.get("metadata", {})
     max_k = max(int(k) for k in results["k_values"])
     lines = [
         "# OpenBook LongMemEval Retrieval Report",
@@ -950,6 +990,16 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
         f"Answerable: **{overall['answerable_count']}**",
         f"Abstention: **{overall['abstention_count']}**",
         f"QA enabled: **{results.get('qa_enabled', False)}**",
+        "",
+        "## Run Metadata",
+        "",
+        f"- Generated at UTC: `{metadata.get('generated_at_utc', 'unknown')}`",
+        f"- OpenBook version: `{metadata.get('openbook_version', 'unknown')}`",
+        f"- Git commit: `{metadata.get('git_commit') or 'unknown'}`",
+        f"- Python: `{metadata.get('python', 'unknown')}`",
+        f"- Platform: `{metadata.get('platform', 'unknown')}`",
+        f"- Dataset SHA256: `{metadata.get('dataset_sha256', 'unknown')}`",
+        *([f"- Command: `{metadata['command']}`"] if "command" in metadata else []),
         "",
         "## Headline Metrics",
         "",
@@ -1001,17 +1051,26 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
             f"{_format_decimal(summary['mean_search_ms'])} |"
         )
 
-    lines.extend(
-        [
-            "",
-            "## Notes",
-            "",
-            "This is a retrieval benchmark. It measures whether OpenBook retrieves the gold "
-            "evidence sessions from LongMemEval. It does not use an LLM judge and does not "
-            "measure final answer correctness.",
-            "",
-        ]
-    )
+    lines.extend(["", "## Notes", ""])
+    if results.get("qa_enabled"):
+        lines.extend(
+            [
+                "This is a retrieval-augmented QA benchmark. It reports retrieval metrics "
+                "and, when a judge provider is configured, judged answer correctness. "
+                "Public comparisons must disclose the reader, judge, embedding model, "
+                "retrieval mode, and context depth.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "This is a retrieval benchmark. It measures whether OpenBook retrieves the gold "
+                "evidence sessions from LongMemEval. It does not use an LLM judge and does not "
+                "measure final answer correctness.",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -1188,6 +1247,7 @@ def main(argv: list[str] | None = None) -> int:
         qa_top_k=args.qa_top_k,
         checkpoint_path=args.report_dir / "checkpoint.records.jsonl" if args.report_dir else None,
     )
+    results["metadata"]["command"] = " ".join([Path(sys.argv[0]).name, *sys.argv[1:]])
     print_summary(results)
 
     if args.output:

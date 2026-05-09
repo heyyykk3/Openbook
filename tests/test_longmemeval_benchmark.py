@@ -109,6 +109,8 @@ def test_sample_longmemeval_benchmark_runs() -> None:
     results = run_benchmark(SAMPLE_DATASET, k_values=[1, 3], limit=2)
 
     assert results["benchmark"] == "LongMemEval retrieval"
+    assert results["metadata"]["dataset_sha256"]
+    assert results["metadata"]["openbook_version"]
     assert results["instances"] == 2
     assert results["overall"]["answerable_count"] == 2
     assert results["overall"]["recall@3"] > 0

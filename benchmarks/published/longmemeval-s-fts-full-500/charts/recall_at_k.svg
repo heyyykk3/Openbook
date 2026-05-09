@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="284" viewBox="0 0 920 284" role="img" aria-label="LongMemEval Retrieval Recall@K">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#17202a}
+.title{font-size:22px;font-weight:700}
+.label{font-size:13px}
+.value{font-size:13px;font-weight:700}
+.axis{stroke:#d5d8dc;stroke-width:1}
+.bar{fill:#2563eb}
+.bg{fill:#eef2f7}
+</style>
+<rect width="920" height="284" fill="#ffffff"/>
+<text class="title" x="24" y="34">LongMemEval Retrieval Recall@K</text>
+<line class="axis" x1="230" y1="54" x2="830" y2="54"/>
+<text class="label" x="24" y="88">R@1</text>
+<rect class="bg" x="230" y="72" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="72" width="336" height="22" rx="3"/>
+<text class="value" x="844" y="88">56.15%</text>
+<text class="label" x="24" y="130">R@3</text>
+<rect class="bg" x="230" y="114" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="114" width="519" height="22" rx="3"/>
+<text class="value" x="844" y="130">86.66%</text>
+<text class="label" x="24" y="172">R@5</text>
+<rect class="bg" x="230" y="156" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="156" width="552" height="22" rx="3"/>
+<text class="value" x="844" y="172">92.15%</text>
+<text class="label" x="24" y="214">R@10</text>
+<rect class="bg" x="230" y="198" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="198" width="569" height="22" rx="3"/>
+<text class="value" x="844" y="214">94.90%</text>
+</svg>

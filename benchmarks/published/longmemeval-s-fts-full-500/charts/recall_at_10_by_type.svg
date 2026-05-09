@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="368" viewBox="0 0 920 368" role="img" aria-label="Recall@10 By Question Type">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#17202a}
+.title{font-size:22px;font-weight:700}
+.label{font-size:13px}
+.value{font-size:13px;font-weight:700}
+.axis{stroke:#d5d8dc;stroke-width:1}
+.bar{fill:#2563eb}
+.bg{fill:#eef2f7}
+</style>
+<rect width="920" height="368" fill="#ffffff"/>
+<text class="title" x="24" y="34">Recall@10 By Question Type</text>
+<line class="axis" x1="230" y1="54" x2="830" y2="54"/>
+<text class="label" x="24" y="88">knowledge-update</text>
+<rect class="bg" x="230" y="72" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="72" width="595" height="22" rx="3"/>
+<text class="value" x="844" y="88">99.31%</text>
+<text class="label" x="24" y="130">multi-session</text>
+<rect class="bg" x="230" y="114" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="114" width="548" height="22" rx="3"/>
+<text class="value" x="844" y="130">91.39%</text>
+<text class="label" x="24" y="172">single-session-assistant</text>
+<rect class="bg" x="230" y="156" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="156" width="600" height="22" rx="3"/>
+<text class="value" x="844" y="172">100.00%</text>
+<text class="label" x="24" y="214">single-session-preference</text>
+<rect class="bg" x="230" y="198" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="198" width="540" height="22" rx="3"/>
+<text class="value" x="844" y="214">90.00%</text>
+<text class="label" x="24" y="256">single-session-user</text>
+<rect class="bg" x="230" y="240" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="240" width="600" height="22" rx="3"/>
+<text class="value" x="844" y="256">100.00%</text>
+<text class="label" x="24" y="298">temporal-reasoning</text>
+<rect class="bg" x="230" y="282" width="600" height="22" rx="3"/>
+<rect class="bar" x="230" y="282" width="552" height="22" rx="3"/>
+<text class="value" x="844" y="298">92.10%</text>
+</svg>

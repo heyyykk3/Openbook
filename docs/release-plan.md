@@ -8,8 +8,8 @@ is still needed before a public alpha.
 | Stage | Status | Notes |
 | --- | ---: | --- |
 | Internal prototype | 90% | Core SQLite memory, CLI, docs, tests, providers, and benchmarks exist. |
-| Public alpha | 70% | Needs packaging polish, installer commands, CI, license/contribution files, and honest MVP docs. |
-| Strong public launch | 45-55% | Needs completed benchmark reports, comparison page, npm/uvx install path, and more agent installers. |
+| Public alpha | 80% | Core package, CI, docs, MCP config writers, smoke tests, and no-key benchmarks exist. Still needs published release and real-client validation. |
+| Strong public launch | 55-60% | Needs completed full QA benchmark report, npm wrapper or uvx-first launch polish, more real client validation, and demo artifacts. |
 
 ## What Other Tools Do
 
@@ -33,7 +33,7 @@ OpenBook's advantage should be:
 
 - SQLite-first, no Docker, no server required
 - FTS search works with zero API keys
-- Optional vector search through provider plugins
+- Optional vector/hybrid retrieval in the benchmark harness first; product vector search is post-alpha hardening
 - Designed around coding-agent workflows and citations
 - One runtime per folder shared safely by different coding agents
 - Book metaphor: cover, index, chapters, citations, handoff

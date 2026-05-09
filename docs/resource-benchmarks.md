@@ -7,8 +7,11 @@ run quickly in CI with small defaults while still supporting larger local runs.
 ## Quick Start
 
 ```bash
-python benchmarks/resource_benchmark.py --memories 100 --report-dir benchmarks/resource/results/smoke
+openbook benchmark resource --memories 100 --report-dir benchmarks/resource/results/smoke
 ```
+
+From a source checkout, `python benchmarks/resource_benchmark.py ...` remains a
+compatibility wrapper around the same packaged benchmark code.
 
 The command writes:
 
@@ -30,7 +33,7 @@ resource profile against other memory tools or future implementation changes.
 ## CLI Options
 
 ```bash
-python benchmarks/resource_benchmark.py \
+openbook benchmark resource \
   --memories 1000 \
   --searches 100 \
   --context-limit 50 \
@@ -52,7 +55,7 @@ python benchmarks/resource_benchmark.py \
 Keep CI runs small so they catch regressions without adding meaningful wall time:
 
 ```bash
-python benchmarks/resource_benchmark.py --memories 25 --searches 5 --report-dir benchmarks/resource/results/ci
+openbook benchmark resource --memories 25 --searches 5 --report-dir benchmarks/resource/results/ci
 ```
 
 For local comparisons, use a stable `--work-dir` and save each `--report-dir`

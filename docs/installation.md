@@ -13,6 +13,14 @@
 pip install openbook-memory
 ```
 
+Until the first public tag is published, install from source:
+
+```bash
+git clone https://github.com/heyyykk3/Openbook.git
+cd Openbook
+pip install -e ".[dev]"
+```
+
 ## Install with pipx
 
 ```bash
@@ -67,9 +75,18 @@ pipx upgrade openbook-memory
 ```bash
 openbook --version
 openbook doctor
+openbook smoke-test
 ```
 
 For common setup failures, see [troubleshooting.md](troubleshooting.md).
+
+Expected smoke-test output includes:
+
+```text
+OpenBook smoke test passed
+Stored memory:
+Retrieved memories:
+```
 
 ## One-command Project Setup
 
@@ -84,4 +101,25 @@ For Cursor or Claude Code:
 ```bash
 openbook setup --project . --yes --client cursor
 openbook setup --project . --yes --client claude-code
+```
+
+## Reset Or Uninstall
+
+Delete one project's memory book:
+
+```bash
+rm -rf .openbook
+```
+
+PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force .openbook
+```
+
+Uninstall the package:
+
+```bash
+pipx uninstall openbook-memory
+pip uninstall openbook-memory
 ```

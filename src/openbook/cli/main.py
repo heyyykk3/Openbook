@@ -27,6 +27,8 @@ from openbook.core.mcp_install import install_mcp_client, mcp_config_document
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import get_project_brief
 from openbook.core.security import ensure_openbookignore
+from openbook.benchmarks.resource import run_benchmark as run_resource_benchmark
+from openbook.benchmarks.resource import write_reports as write_resource_reports
 from openbook.providers.embeddings import get_embedding_provider
 from openbook.providers.llm import get_llm_provider
 
@@ -273,6 +275,81 @@ def _run_smoke_test(project_root: Path) -> None:
     click.echo(f"OpenBook smoke test passed at {project_root}")
     click.echo(f"Stored memory: {memory_id}")
     click.echo(f"Retrieved memories: {len(pack.cards)}")
+
+
+@cli.group("benchmark")
+def benchmark_group() -> None:
+    """Run OpenBook benchmarks."""
+    pass
+
+
+@benchmark_group.command("list")
+def benchmark_list() -> None:
+    """List benchmark tracks."""
+    click.echo("Available benchmark tracks:")
+    click.echo("  resource    No-key SQLite footprint and latency benchmark")
+    click.echo("  longmemeval External harness in benchmarks/longmemeval")
+
+
+@benchmark_group.command("resource")
+@click.option("--memories", type=int, default=100, show_default=True)
+@click.option("--searches", type=int, default=20, show_default=True)
+@click.option("--context-limit", type=int, default=20, show_default=True)
+@click.option("--seed", type=int, default=1337, show_default=True)
+@click.option(
+    "--report-dir",
+    type=click.Path(path_type=Path),
+    default=Path("benchmarks/resource/results/openbook-resource"),
+    show_default=True,
+)
+@click.option("--work-dir", type=click.Path(path_type=Path), default=None)
+def benchmark_resource(
+    memories: int,
+    searches: int,
+    context_limit: int,
+    seed: int,
+    report_dir: Path,
+    work_dir: Optional[Path],
+) -> None:
+    """Run the no-key SQLite resource benchmark."""
+    if memories < 1 or searches < 1 or context_limit < 1:
+        raise click.ClickException("memories, searches, and context-limit must be at least 1")
+
+    if work_dir is None:
+        with tempfile.TemporaryDirectory(prefix="openbook-resource-") as temp_dir:
+            results = run_resource_benchmark(
+                memories=memories,
+                searches=searches,
+                context_limit=context_limit,
+                seed=seed,
+                work_dir=Path(temp_dir),
+            )
+            write_resource_reports(results, report_dir)
+    else:
+        results = run_resource_benchmark(
+            memories=memories,
+            searches=searches,
+            context_limit=context_limit,
+            seed=seed,
+            work_dir=work_dir,
+        )
+        write_resource_reports(results, report_dir)
+
+    click.echo(f"Wrote {report_dir / 'summary.md'}")
+    click.echo(f"Wrote {report_dir / 'results.json'}")
+
+
+@benchmark_group.command("longmemeval")
+def benchmark_longmemeval() -> None:
+    """Print how to run the LongMemEval harness from a source checkout."""
+    click.echo("LongMemEval is the full memory benchmark track.")
+    click.echo("Run it from a source checkout so the dataset and report templates are available:")
+    click.echo(
+        "python benchmarks/longmemeval/openbook_longmemeval.py "
+        "--download s --retrieval-mode fts --k 1,3,5,10 "
+        "--report-dir benchmarks/longmemeval/results/openbook-longmemeval-s"
+    )
+    click.echo("See benchmarks/README.md and docs/benchmarks.md for QA and provider examples.")
 
 
 @cli.command("brief")

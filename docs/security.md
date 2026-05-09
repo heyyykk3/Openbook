@@ -27,7 +27,9 @@ Before storing any memory, OpenBook scans for common secret patterns:
 - GitHub tokens
 - OpenAI keys
 
-If secrets are detected, the memory is **quarantined** instead of approved.
+If secrets are detected, the memory is **redacted and quarantined** instead of
+approved. OpenBook stores the redacted text in SQLite so the FTS index, chunks,
+exports, and context packs do not retain the obvious secret value.
 
 ## Redaction
 

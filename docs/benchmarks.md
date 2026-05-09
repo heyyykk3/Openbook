@@ -6,6 +6,23 @@ For benchmark publication rules and comparison standards, see
 [benchmarking-policy.md](benchmarking-policy.md). For runnable benchmark entry
 points, see [../benchmarks/README.md](../benchmarks/README.md).
 
+## Installed No-Key Benchmark
+
+Every installed OpenBook package includes a lightweight resource benchmark:
+
+```bash
+openbook benchmark resource --memories 100 --searches 20
+```
+
+It writes `summary.md` and `results.json` and does not require API keys, model
+downloads, Docker, or benchmark datasets.
+
+## Published Results
+
+- [LongMemEval_S FTS full 500 report](../benchmarks/published/longmemeval-s-fts-full-500/summary.md):
+  no-key SQLite FTS retrieval baseline with summary, raw records, metrics CSV,
+  and SVG charts.
+
 ## LongMemEval
 
 LongMemEval is the first benchmark target because it is a widely used long-term
@@ -48,6 +65,8 @@ When `--report-dir` is set, the benchmark writes:
 - `records.jsonl`
 - `metrics.csv`
 - SVG charts for public scorecard, Recall@K, category Recall@K, and latency
+- run metadata including OpenBook version, git commit when available, Python,
+  platform, dataset SHA256, and the command used
 
 ## Local Embeddings
 
@@ -147,6 +166,10 @@ python benchmarks/longmemeval/openbook_longmemeval.py \
 The harness measures retrieval quality and optional end-to-end QA. Retrieval
 results are useful for memory-layer development. QA results are better for
 public comparisons, but they must disclose the reader and judge model.
+
+Normal OpenBook `remember` and `search` commands currently use SQLite FTS. The
+vector and hybrid retrieval paths live in the benchmark harness while the
+product vector index is hardened.
 
 Future benchmark tracks should add:
 

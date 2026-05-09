@@ -41,7 +41,7 @@ jobs:
 
       - name: Resource benchmark smoke test
         run: >
-          python benchmarks/resource_benchmark.py
+          python -m openbook.cli.main benchmark resource
           --memories 25
           --searches 5
           --report-dir benchmarks/resource/results/ci

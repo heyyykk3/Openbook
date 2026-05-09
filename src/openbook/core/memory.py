@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from openbook.core.db import content_hash
 from openbook.core.models import parse_tags
-from openbook.core.security import scan_for_secrets
+from openbook.core.security import redact_secrets, scan_for_secrets
 
 
 VALID_MEMORY_TYPES = {
@@ -60,17 +60,29 @@ def remember(
     if status not in VALID_STATUSES:
         raise ValueError(f"Invalid status: {status}")
 
-    # Secret scan
+    content_to_store = content
+    title_to_store = title
+    summary_to_store = summary
+
+    # Secret scan. Quarantined memories are stored redacted so the SQLite book,
+    # FTS index, chunks, and exports do not retain the obvious secret value.
     secret_findings = scan_for_secrets(content)
     if secret_findings:
         status = "quarantined"
-        if summary:
-            summary += f" [QUARANTINED: potential secrets detected: {', '.join(secret_findings)}]"
+        content_to_store = redact_secrets(content)
+        title_to_store = redact_secrets(title) if title else None
+        if summary_to_store:
+            summary_to_store = (
+                f"{redact_secrets(summary_to_store)} "
+                f"[QUARANTINED: potential secrets detected: {', '.join(secret_findings)}]"
+            )
         else:
-            summary = f"[QUARANTINED: potential secrets detected: {', '.join(secret_findings)}]"
+            summary_to_store = (
+                f"[QUARANTINED: potential secrets detected: {', '.join(secret_findings)}]"
+            )
 
     # Deduplication via content hash
-    c_hash = content_hash(content)
+    c_hash = content_hash(content_to_store)
     existing = conn.execute(
         "SELECT id FROM memories WHERE project_id = ? AND content_hash = ?",
         (project_id, c_hash),
@@ -111,9 +123,9 @@ def remember(
             project_id,
             chapter_id,
             memory_type,
-            title,
-            summary,
-            content,
+            title_to_store,
+            summary_to_store,
+            content_to_store,
             json.dumps(tags or []),
             confidence,
             trust_score,
@@ -151,9 +163,9 @@ def remember(
         (
             memory_id,
             project_id,
-            content,
+            content_to_store,
             c_hash,
-            len(content) // 4,
+            len(content_to_store) // 4,
         ),
     )
 

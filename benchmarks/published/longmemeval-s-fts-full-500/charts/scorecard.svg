@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="475" viewBox="0 0 1200 475" role="img" aria-label="OpenBook Benchmark Scorecard">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#08080a}
+.title{font-size:34px;font-weight:800}
+.label{font-size:22px;font-weight:800;letter-spacing:0}
+.value{font-size:24px;font-weight:900}
+</style>
+<rect width="1200" height="475" fill="#ffffff"/>
+<text class="title" x="44" y="50">OpenBook Benchmark Scorecard</text>
+<rect x="250" y="95" width="855" height="52" fill="#f3f3f4"/>
+<rect x="250" y="95" width="811" height="52" fill="#9b7cf3"/>
+<text class="label" x="274" y="130">LONGMEMEVAL R@10</text>
+<text class="value" x="987" y="130">94.9</text>
+<rect x="250" y="200" width="855" height="52" fill="#f3f3f4"/>
+<rect x="250" y="200" width="781" height="52" fill="#9b7cf3"/>
+<text class="label" x="274" y="235">MRR</text>
+<text class="value" x="957" y="235">91.4</text>
+<rect x="250" y="305" width="855" height="52" fill="#f3f3f4"/>
+<rect x="250" y="305" width="855" height="52" fill="#9b7cf3"/>
+<text class="label" x="274" y="340">CITATION PRESENCE</text>
+<text class="value" x="1031" y="340">100.0</text>
+</svg>
