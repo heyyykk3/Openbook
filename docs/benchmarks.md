@@ -22,6 +22,9 @@ downloads, Docker, or benchmark datasets.
 - [LongMemEval_S FTS full 500 report](../benchmarks/published/longmemeval-s-fts-full-500/summary.md):
   no-key SQLite FTS retrieval baseline with summary, raw records, metrics CSV,
   and SVG charts.
+- [LongMemEval_S Gemini hybrid QA full 500 report](../benchmarks/published/longmemeval-s-gemini-hybrid-qa-full-500/summary.md):
+  Gemini embeddings plus Gemini reader/judge, including retrieval and judged QA
+  metrics.
 
 ## LongMemEval
 

@@ -25,6 +25,11 @@ published score should include:
 Published clean reports live under `benchmarks/published/`. Ignored scratch
 runs live under `benchmarks/**/results/`.
 
+Current published reports:
+
+- `benchmarks/published/longmemeval-s-fts-full-500/`
+- `benchmarks/published/longmemeval-s-gemini-hybrid-qa-full-500/`
+
 ## Quick Smoke Test
 
 ```bash

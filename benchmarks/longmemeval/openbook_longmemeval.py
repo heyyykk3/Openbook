@@ -996,6 +996,11 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
         f"- Generated at UTC: `{metadata.get('generated_at_utc', 'unknown')}`",
         f"- OpenBook version: `{metadata.get('openbook_version', 'unknown')}`",
         f"- Git commit: `{metadata.get('git_commit') or 'unknown'}`",
+        *(
+            [f"- Postprocessed with git commit: `{metadata['postprocessed_with_git_commit']}`"]
+            if "postprocessed_with_git_commit" in metadata
+            else []
+        ),
         f"- Python: `{metadata.get('python', 'unknown')}`",
         f"- Platform: `{metadata.get('platform', 'unknown')}`",
         f"- Dataset SHA256: `{metadata.get('dataset_sha256', 'unknown')}`",

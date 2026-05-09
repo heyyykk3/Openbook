@@ -33,6 +33,8 @@ OpenBook can honestly claim today:
 - reproducible LongMemEval retrieval harness
 - no-key resource benchmark via `openbook benchmark resource`
 - optional provider-backed benchmark runs with Ollama, Gemini, OpenAI-compatible APIs, and sentence-transformers
+- LongMemEval_S no-key FTS retrieval baseline: R@10 94.90%, MRR 0.9143
+- LongMemEval_S Gemini hybrid QA run: R@10 99.43%, MRR 0.9311, judged QA accuracy 84.00%
 
 OpenBook should not claim yet:
 
