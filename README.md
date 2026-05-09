@@ -200,6 +200,7 @@ agent-integration, benchmark, and open-source launch checklist.
 See [docs/comparison.md](docs/comparison.md) for the head-to-head positioning
 and [docs/public-alpha-checklist.md](docs/public-alpha-checklist.md) for the
 launch gate.
+See [docs/releasing.md](docs/releasing.md) for tag and PyPI release steps.
 
 ## Security
 

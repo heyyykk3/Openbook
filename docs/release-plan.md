@@ -159,6 +159,7 @@ Do not compare to Mem0/Zep/Signet unless:
 - Remove local caches and benchmark datasets from publish artifacts.
 - Publish clean benchmark reports without secrets or temporary logs.
 - Rotate any temporary benchmark API key before release.
+- Configure PyPI trusted publishing before the first tag release.
 
 ## Release Recommendation
 
