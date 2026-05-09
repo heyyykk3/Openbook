@@ -6,7 +6,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 
+from openbook.cli.main import cli
 from openbook.core.config import Config
 from openbook.core.context_pack import build_context_pack
 from openbook.core.db import get_connection, initialize_database
@@ -16,6 +18,12 @@ from openbook.core.memory import (
     get_review_queue,
     reject_memory,
     remember,
+)
+from openbook.core.mcp_install import (
+    install_mcp_client,
+    mcp_config_document,
+    merge_mcp_config,
+    normalize_client,
 )
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import search_memories
@@ -70,6 +78,36 @@ class TestInit:
 
     def test_init_creates_ignore(self, temp_project):
         assert (temp_project / ".openbookignore").exists()
+
+    def test_setup_can_initialize_and_install_cursor_noninteractive(self, tmp_path):
+        root = tmp_path / "setup-project"
+        root.mkdir()
+        (root / ".git").mkdir()
+        runner = CliRunner()
+
+        result = runner.invoke(
+            cli,
+            [
+                "setup",
+                "--project",
+                str(root),
+                "--yes",
+                "--client",
+                "cursor",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (root / ".openbook" / "openbook.sqlite").exists()
+        assert (root / ".cursor" / "mcp.json").exists()
+
+    def test_smoke_test_command_passes_on_temp_project(self):
+        runner = CliRunner()
+
+        result = runner.invoke(cli, ["smoke-test"])
+
+        assert result.exit_code == 0
+        assert "OpenBook smoke test passed" in result.output
 
 
 class TestSchema:
@@ -202,6 +240,52 @@ class TestExport:
         data = export_json(conn, project_id, temp_project)
         assert "project" in data
         assert "memories" in data
+
+
+class TestMCPInstall:
+    def test_mcp_config_pins_project_env(self, temp_project):
+        config = mcp_config_document(temp_project, "cursor")
+        server = config["mcpServers"]["openbook"]
+
+        assert server["command"] == "openbook"
+        assert server["args"] == ["mcp"]
+        assert server["env"]["OPENBOOK_PROJECT"] == str(temp_project.resolve())
+        assert server["env"]["OPENBOOK_CLIENT"] == "cursor"
+
+    def test_merge_mcp_config_preserves_other_servers(self):
+        merged = merge_mcp_config(
+            {"mcpServers": {"other": {"command": "other"}}},
+            {"mcpServers": {"openbook": {"command": "openbook"}}},
+        )
+
+        assert set(merged["mcpServers"]) == {"other", "openbook"}
+
+    def test_cursor_install_writes_project_config(self, temp_project):
+        result = install_mcp_client("cursor", temp_project)
+        path = temp_project / ".cursor" / "mcp.json"
+
+        assert result.mode == "write"
+        assert result.target == str(path)
+        assert path.exists()
+        assert "OPENBOOK_PROJECT" in path.read_text(encoding="utf-8")
+
+    def test_claude_code_install_writes_project_mcp_json(self, temp_project):
+        result = install_mcp_client("claude-code", temp_project)
+
+        assert result.mode == "write"
+        assert result.target == str(temp_project / ".mcp.json")
+        assert (temp_project / ".mcp.json").exists()
+
+    def test_codex_install_dry_run_prints_command(self, temp_project):
+        result = install_mcp_client("codex", temp_project, dry_run=True)
+
+        assert result.mode == "dry-run"
+        assert "codex mcp add openbook" in result.message
+        assert "OPENBOOK_PROJECT" in result.message
+
+    def test_unknown_mcp_client_is_rejected(self):
+        with pytest.raises(ValueError):
+            normalize_client("unknown")
 
 
 class TestProviders:

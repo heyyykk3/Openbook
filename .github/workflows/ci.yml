@@ -36,5 +36,15 @@ jobs:
       - name: Pytest
         run: python -m pytest -q
 
+      - name: CLI smoke test
+        run: python -m openbook.cli.main smoke-test
+
+      - name: Resource benchmark smoke test
+        run: >
+          python benchmarks/resource_benchmark.py
+          --memories 25
+          --searches 5
+          --report-dir benchmarks/resource/results/ci
+
       - name: Mypy
         run: python -m mypy src

@@ -2,6 +2,48 @@
 
 OpenBook supports the Model Context Protocol (MCP) via stdio transport.
 
+## Install For A Client
+
+Project-pinned MCP installs are the recommended path. They set
+`OPENBOOK_PROJECT` so each agent opens the correct repo memory book even when
+the MCP client launches from another working directory.
+
+Codex:
+
+```bash
+openbook mcp install --client codex --project .
+```
+
+Claude Code project config:
+
+```bash
+openbook mcp install --client claude-code --project .
+```
+
+Cursor project config:
+
+```bash
+openbook mcp install --client cursor --project .
+```
+
+Initialize and install in one command:
+
+```bash
+openbook setup --project . --yes --client codex
+```
+
+Claude Desktop user config:
+
+```bash
+openbook mcp install --client claude-desktop --project .
+```
+
+Preview without writing:
+
+```bash
+openbook mcp install --client cursor --project . --dry-run
+```
+
 ## Manual Config
 
 Add to your MCP client configuration:
@@ -11,7 +53,12 @@ Add to your MCP client configuration:
   "mcpServers": {
     "openbook": {
       "command": "openbook",
-      "args": ["mcp"]
+      "args": ["mcp"],
+      "env": {
+        "OPENBOOK_PROJECT": "/absolute/path/to/your/repo",
+        "OPENBOOK_CLIENT": "generic",
+        "OPENBOOK_AGENT": "openbook-generic"
+      }
     }
   }
 }
@@ -59,9 +106,10 @@ Show OpenBook status.
 
 ## Clients
 
-- **Codex**: Add the MCP JSON to your Codex config
-- **Claude Code**: Add via `claude config add mcpServer ...`
-- **Cursor**: Add to Cursor MCP settings
+- **Codex**: `openbook mcp install --client codex --project .`
+- **Claude Code**: `openbook mcp install --client claude-code --project .`
+- **Claude Desktop**: `openbook mcp install --client claude-desktop --project .`
+- **Cursor**: `openbook mcp install --client cursor --project .`
 - **Windsurf**: Add to Windsurf MCP settings
 - **Gemini CLI**: Add to Gemini CLI MCP settings
 - **OpenCode**: Use the MCP JSON above

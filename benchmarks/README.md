@@ -20,6 +20,7 @@ published score should include:
 | Benchmark | Path | Status | What It Measures |
 | --- | --- | --- | --- |
 | LongMemEval | `benchmarks/longmemeval/` | Active | Long-term memory retrieval and optional QA |
+| Resource benchmark | `benchmarks/resource_benchmark.py` | Active | DB size, latency, context size, process memory |
 
 ## Quick Smoke Test
 
@@ -74,6 +75,19 @@ benchmarks/longmemeval/results/<run>/checkpoint.records.jsonl
 
 If the run is interrupted, rerun the same command with the same `--report-dir`
 and completed records will be skipped.
+
+## Resource Footprint
+
+No API key required:
+
+```bash
+python benchmarks/resource_benchmark.py \
+  --memories 100 \
+  --searches 20 \
+  --report-dir benchmarks/resource/results/smoke
+```
+
+See [../docs/resource-benchmarks.md](../docs/resource-benchmarks.md).
 
 ## Output Files
 

@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional
@@ -22,6 +23,7 @@ from openbook.core.memory import (
     reject_memory,
     remember,
 )
+from openbook.core.mcp_install import install_mcp_client, mcp_config_document
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import get_project_brief
 from openbook.core.security import ensure_openbookignore
@@ -110,21 +112,43 @@ def init(path: str) -> None:
 
 
 @cli.command()
-def setup() -> None:
+@click.option("--project", default=None, help="Project path. Defaults to detected repo root.")
+@click.option("--client", multiple=True, help="MCP client to install after init.")
+@click.option("--yes", is_flag=True, help="Run non-interactively.")
+@click.option("--dry-run", is_flag=True, help="Preview MCP config changes without writing.")
+def setup(
+    project: Optional[str],
+    client: tuple[str, ...],
+    yes: bool,
+    dry_run: bool,
+) -> None:
     """Run guided setup wizard."""
-    project_root = detect_project_root()
+    project_root = _get_project_root(project)
     click.echo("OpenBook Setup Wizard")
     click.echo(f"Detected project root: {project_root}")
     click.echo(f"Project name: {detect_project_name(project_root)}")
     click.echo(f"Stack: {', '.join(detect_stack(project_root)) or 'unknown'}")
 
-    if click.confirm("Initialize OpenBook here?"):
+    should_init = yes or click.confirm("Initialize OpenBook here?")
+    if should_init:
         initialize_database(project_root)
         Config.create_default(project_root)
         ensure_openbookignore(project_root)
-        click.echo("Done.")
+        click.echo("Initialized OpenBook.")
     else:
         click.echo("Aborted.")
+        return
+
+    for mcp_client in client:
+        try:
+            result = install_mcp_client(mcp_client, project_root, dry_run=dry_run)
+        except (RuntimeError, ValueError) as e:
+            raise click.ClickException(str(e)) from e
+        click.echo(f"MCP {result.client}: {result.mode} -> {result.target}")
+        if result.mode == "dry-run":
+            click.echo(result.message)
+
+    click.echo("Done.")
 
 
 @cli.command("remember")
@@ -206,6 +230,49 @@ def search_cmd(
         agent_id=agent_id,
     )
     click.echo(pack.to_text(include_raw=raw))
+
+
+@cli.command("smoke-test")
+@click.option("--project", default=None, help="Project path. Defaults to a temporary project.")
+def smoke_test(project: Optional[str]) -> None:
+    """Run a no-key init/write/search smoke test."""
+    if project:
+        _run_smoke_test(_get_project_root(project))
+        return
+
+    with tempfile.TemporaryDirectory(prefix="openbook-smoke-") as tmp:
+        project_root = Path(tmp) / "repo"
+        project_root.mkdir()
+        (project_root / ".git").mkdir()
+        (project_root / "README.md").write_text("# OpenBook smoke test\n", encoding="utf-8")
+        _run_smoke_test(project_root)
+
+
+def _run_smoke_test(project_root: Path) -> None:
+    initialize_database(project_root)
+    Config.create_default(project_root)
+    ensure_openbookignore(project_root)
+    conn = get_connection(project_root)
+    try:
+        project_id = _get_or_create_project(conn, project_root)
+        memory_id = remember(
+            conn=conn,
+            project_id=project_id,
+            content="OpenBook smoke test memory: tests run with pytest -q.",
+            memory_type="command",
+            title="Smoke test command",
+            tags=["smoke-test"],
+            status="approved",
+        )
+        pack = build_context_pack(conn, project_id, "pytest smoke test", budget="tiny")
+    finally:
+        conn.close()
+
+    if not pack.cards:
+        raise click.ClickException("Smoke test failed: search returned no memories")
+    click.echo(f"OpenBook smoke test passed at {project_root}")
+    click.echo(f"Stored memory: {memory_id}")
+    click.echo(f"Retrieved memories: {len(pack.cards)}")
 
 
 @cli.command("brief")
@@ -557,7 +624,7 @@ def runtime_status() -> None:
 
 class DefaultGroup(click.Group):
     def invoke(self, ctx: click.Context) -> None:
-        if ctx.protected_args or ctx.invoked_subcommand:
+        if ctx.args or ctx.invoked_subcommand:
             super().invoke(ctx)
             return
         # Default: run MCP server
@@ -572,30 +639,37 @@ def mcp_group() -> None:
 
 @mcp_group.command("install")
 @click.option("--client", default=None)
-def mcp_install(client: Optional[str]) -> None:
-    """Install MCP config for a client (MVP: prints manual config)."""
-    click.echo("MCP manual config:")
-    click.echo(json.dumps({
-        "mcpServers": {
-            "openbook": {
-                "command": "openbook",
-                "args": ["mcp"]
-            }
-        }
-    }, indent=2))
+@click.option("--project", default=None, help="Project to pin in the MCP server env.")
+@click.option("--dry-run", is_flag=True, help="Print the config/command without writing.")
+@click.option("--config-path", type=click.Path(path_type=Path), default=None, help="Override client config path.")
+def mcp_install(
+    client: Optional[str],
+    project: Optional[str],
+    dry_run: bool,
+    config_path: Optional[Path],
+) -> None:
+    """Install MCP config for Codex, Claude Code, Claude Desktop, or Cursor."""
+    project_root = _get_project_root(project)
+    try:
+        result = install_mcp_client(
+            client or "generic",
+            project_root,
+            dry_run=dry_run,
+            config_path=config_path,
+        )
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(str(e)) from e
+
+    click.echo(f"Client: {result.client}")
+    click.echo(f"Mode: {result.mode}")
+    click.echo(f"Target: {result.target}")
+    click.echo(result.message)
 
 
 @mcp_group.command("print-config")
 def mcp_print_config() -> None:
     """Print MCP config."""
-    click.echo(json.dumps({
-        "mcpServers": {
-            "openbook": {
-                "command": "openbook",
-                "args": ["mcp"]
-            }
-        }
-    }, indent=2))
+    click.echo(json.dumps(mcp_config_document(detect_project_root(), "generic"), indent=2))
 
 
 @mcp_group.command("run")

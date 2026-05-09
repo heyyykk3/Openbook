@@ -27,10 +27,10 @@ OpenBook solves this by turning a repo into a **living, searchable, citation-bac
 ```bash
 pipx install openbook-memory
 cd my-repo
-openbook init .
-openbook remember "Tests run with pytest -q"
+openbook setup --project . --yes --client codex
+openbook smoke-test
+openbook remember "Tests run with pytest -q" --approve
 openbook search "how do tests run?"
-openbook mcp install --client codex
 ```
 
 ## Installation
@@ -46,7 +46,8 @@ See [docs/installation.md](docs/installation.md) for details.
 | Command | Description |
 |---------|-------------|
 | `openbook init .` | Initialize `.openbook` in the project |
-| `openbook setup` | Guided setup wizard |
+| `openbook setup --client codex` | Initialize and optionally install MCP |
+| `openbook smoke-test` | Verify init/write/search with no API key |
 | `openbook remember "..."` | Store a memory |
 | `openbook search "..."` | Search memories |
 | `openbook brief` | Get a project briefing |
@@ -65,15 +66,10 @@ See [docs/installation.md](docs/installation.md) for details.
 
 OpenBook supports MCP stdio by default:
 
-```json
-{
-  "mcpServers": {
-    "openbook": {
-      "command": "openbook",
-      "args": ["mcp"]
-    }
-  }
-}
+```bash
+openbook mcp install --client codex --project .
+openbook mcp install --client claude-code --project .
+openbook mcp install --client cursor --project .
 ```
 
 MCP tools: `openbook_remember`, `openbook_search`, `openbook_brief`, `openbook_handoff`, `openbook_cite`, `openbook_review`, `openbook_status`.
@@ -193,12 +189,17 @@ See [benchmarks/README.md](benchmarks/README.md) for runnable entry points,
 [docs/benchmarks.md](docs/benchmarks.md) for details, and
 [docs/benchmarking-policy.md](docs/benchmarking-policy.md) for what counts as a
 publishable score.
+See [docs/resource-benchmarks.md](docs/resource-benchmarks.md) for local
+footprint measurements.
 
 ## Release Plan
 
 OpenBook is currently targeting a public `v0.1.0-alpha`. See
 [docs/release-plan.md](docs/release-plan.md) for the setup, provider,
 agent-integration, benchmark, and open-source launch checklist.
+See [docs/comparison.md](docs/comparison.md) for the head-to-head positioning
+and [docs/public-alpha-checklist.md](docs/public-alpha-checklist.md) for the
+launch gate.
 
 ## Security
 

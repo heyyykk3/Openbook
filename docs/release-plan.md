@@ -69,9 +69,9 @@ Current:
 
 | Agent / Client | Current OpenBook Path | Needed Before Alpha |
 | --- | --- | --- |
-| Codex | Manual MCP config / CLI docs | `openbook mcp install --client codex` writes config |
-| Claude Code | MCP stdio possible | `openbook mcp install --client claude-code` |
-| Cursor | MCP config possible | Write `.cursor/mcp.json` |
+| Codex | Installer uses `codex mcp add` | Validate across fresh machines |
+| Claude Code | Writes project `.mcp.json` | Validate against Claude Code |
+| Cursor | Writes `.cursor/mcp.json` | Validate against Cursor |
 | Windsurf | MCP config possible | Add installer snippet |
 | OpenCode | MCP config possible | Add installer snippet |
 | Gemini CLI | Not documented enough | Add MCP snippet if supported |
@@ -153,7 +153,7 @@ Do not compare to Mem0/Zep/Signet unless:
 - Initialize git repo.
 - Add `LICENSE`, `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`.
 - Add GitHub Actions for ruff, pytest, mypy.
-- Implement real `openbook mcp install --client ...` config writers.
+- Validate `openbook mcp install --client ...` config writers against real clients.
 - Add `openbook setup` wizard path for FTS, Ollama, Gemini, OpenAI-compatible.
 - Add npm wrapper or at least document `uvx` install.
 - Remove local caches and benchmark datasets from publish artifacts.

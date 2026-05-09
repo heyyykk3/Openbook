@@ -42,3 +42,4 @@ htmlcov/
 # Benchmark outputs
 benchmarks/**/results/
 benchmarks/**/data/
+benchmarks/**/work/

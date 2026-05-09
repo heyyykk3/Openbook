@@ -42,7 +42,8 @@ def _lastrowid(cur: Any) -> int:
 
 
 def _get_project_info() -> tuple[Path, Any, int]:
-    root = detect_project_root()
+    configured_root = os.environ.get("OPENBOOK_PROJECT")
+    root = Path(configured_root).resolve() if configured_root else detect_project_root()
     conn = get_connection(root)
     root_str = str(root.resolve())
     row = conn.execute("SELECT id FROM projects WHERE root_path = ?", (root_str,)).fetchone()

@@ -68,3 +68,18 @@ pipx upgrade openbook-memory
 openbook --version
 openbook doctor
 ```
+
+## One-command Project Setup
+
+```bash
+cd my-repo
+openbook setup --project . --yes --client codex
+openbook smoke-test
+```
+
+For Cursor or Claude Code:
+
+```bash
+openbook setup --project . --yes --client cursor
+openbook setup --project . --yes --client claude-code
+```
