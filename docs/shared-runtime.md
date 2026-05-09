@@ -12,6 +12,15 @@ my-app/
 
 Codex, Claude Code, Cursor, Gemini CLI, OpenCode, and other agents can all use this same memory.
 
+Run the no-key cross-agent smoke test:
+
+```bash
+openbook smoke-test --multi-agent
+```
+
+This writes a memory as a simulated writer client and retrieves it as a simulated
+reader client from the same SQLite book.
+
 ## Concurrency Model
 
 ### Reads

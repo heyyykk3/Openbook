@@ -135,6 +135,14 @@ class TestInit:
         assert result.exit_code == 0
         assert "OpenBook smoke test passed" in result.output
 
+    def test_smoke_test_multi_agent_passes_on_temp_project(self):
+        runner = CliRunner()
+
+        result = runner.invoke(cli, ["smoke-test", "--multi-agent"])
+
+        assert result.exit_code == 0
+        assert "Multi-agent check" in result.output
+
     def test_benchmark_resource_command_writes_reports(self, tmp_path):
         report_dir = tmp_path / "resource-report"
         work_dir = tmp_path / "resource-work"

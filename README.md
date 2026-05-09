@@ -31,6 +31,7 @@ pipx install openbook-memory
 cd my-repo
 openbook setup --project . --yes --client codex
 openbook smoke-test
+openbook smoke-test --multi-agent
 openbook remember "Tests run with pytest -q" --approve
 openbook search "how do tests run?"
 ```

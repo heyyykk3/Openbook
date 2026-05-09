@@ -24,6 +24,7 @@ from openbook.core.memory import (
     remember,
 )
 from openbook.core.mcp_install import install_mcp_client, mcp_config_document
+from openbook.core.models import ContextPack
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import get_project_brief
 from openbook.core.security import ensure_openbookignore
@@ -236,10 +237,11 @@ def search_cmd(
 
 @cli.command("smoke-test")
 @click.option("--project", default=None, help="Project path. Defaults to a temporary project.")
-def smoke_test(project: Optional[str]) -> None:
+@click.option("--multi-agent", is_flag=True, help="Verify two simulated agents share one book.")
+def smoke_test(project: Optional[str], multi_agent: bool) -> None:
     """Run a no-key init/write/search smoke test."""
     if project:
-        _run_smoke_test(_get_project_root(project))
+        _run_smoke_test(_get_project_root(project), multi_agent=multi_agent)
         return
 
     with tempfile.TemporaryDirectory(prefix="openbook-smoke-") as tmp:
@@ -247,26 +249,29 @@ def smoke_test(project: Optional[str]) -> None:
         project_root.mkdir()
         (project_root / ".git").mkdir()
         (project_root / "README.md").write_text("# OpenBook smoke test\n", encoding="utf-8")
-        _run_smoke_test(project_root)
+        _run_smoke_test(project_root, multi_agent=multi_agent)
 
 
-def _run_smoke_test(project_root: Path) -> None:
+def _run_smoke_test(project_root: Path, *, multi_agent: bool = False) -> None:
     initialize_database(project_root)
     Config.create_default(project_root)
     ensure_openbookignore(project_root)
     conn = get_connection(project_root)
     try:
         project_id = _get_or_create_project(conn, project_root)
-        memory_id = remember(
-            conn=conn,
-            project_id=project_id,
-            content="OpenBook smoke test memory: tests run with pytest -q.",
-            memory_type="command",
-            title="Smoke test command",
-            tags=["smoke-test"],
-            status="approved",
-        )
-        pack = build_context_pack(conn, project_id, "pytest smoke test", budget="tiny")
+        if multi_agent:
+            memory_id, pack = _run_multi_agent_smoke(project_root, project_id)
+        else:
+            memory_id = remember(
+                conn=conn,
+                project_id=project_id,
+                content="OpenBook smoke test memory: tests run with pytest -q.",
+                memory_type="command",
+                title="Smoke test command",
+                tags=["smoke-test"],
+                status="approved",
+            )
+            pack = build_context_pack(conn, project_id, "pytest smoke test", budget="tiny")
     finally:
         conn.close()
 
@@ -275,6 +280,55 @@ def _run_smoke_test(project_root: Path) -> None:
     click.echo(f"OpenBook smoke test passed at {project_root}")
     click.echo(f"Stored memory: {memory_id}")
     click.echo(f"Retrieved memories: {len(pack.cards)}")
+    if multi_agent:
+        click.echo("Multi-agent check: writer=openbook-smoke-writer reader=openbook-smoke-reader")
+
+
+def _run_multi_agent_smoke(project_root: Path, project_id: int) -> tuple[int, ContextPack]:
+    previous = {
+        "OPENBOOK_CLIENT": os.environ.get("OPENBOOK_CLIENT"),
+        "OPENBOOK_AGENT": os.environ.get("OPENBOOK_AGENT"),
+    }
+    try:
+        os.environ["OPENBOOK_CLIENT"] = "codex"
+        os.environ["OPENBOOK_AGENT"] = "openbook-smoke-writer"
+        writer_conn = get_connection(project_root)
+        try:
+            writer_agent_id = _get_current_agent_id(writer_conn, project_id)
+            memory_id = remember(
+                conn=writer_conn,
+                project_id=project_id,
+                content="OpenBook multi-agent smoke: shared SQLite memory works across clients.",
+                memory_type="handoff",
+                title="Multi-agent smoke handoff",
+                tags=["smoke-test", "multi-agent"],
+                status="approved",
+                agent_id=writer_agent_id,
+            )
+        finally:
+            writer_conn.close()
+
+        os.environ["OPENBOOK_CLIENT"] = "cursor"
+        os.environ["OPENBOOK_AGENT"] = "openbook-smoke-reader"
+        reader_conn = get_connection(project_root)
+        try:
+            reader_agent_id = _get_current_agent_id(reader_conn, project_id)
+            pack = build_context_pack(
+                reader_conn,
+                project_id,
+                "shared SQLite memory across clients",
+                budget="tiny",
+                agent_id=reader_agent_id,
+            )
+        finally:
+            reader_conn.close()
+        return memory_id, pack
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 @cli.group("benchmark")

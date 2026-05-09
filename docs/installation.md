@@ -76,6 +76,7 @@ pipx upgrade openbook-memory
 openbook --version
 openbook doctor
 openbook smoke-test
+openbook smoke-test --multi-agent
 ```
 
 For common setup failures, see [troubleshooting.md](troubleshooting.md).
@@ -88,12 +89,15 @@ Stored memory:
 Retrieved memories:
 ```
 
+`openbook smoke-test --multi-agent` also prints `Multi-agent check:`.
+
 ## One-command Project Setup
 
 ```bash
 cd my-repo
 openbook setup --project . --yes --client codex
 openbook smoke-test
+openbook smoke-test --multi-agent
 ```
 
 For Cursor or Claude Code:
