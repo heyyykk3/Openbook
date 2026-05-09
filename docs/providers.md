@@ -39,6 +39,17 @@ model = "text-embedding-3-small"
 base_url = "https://api.openai.com"
 ```
 
+### gemini
+Uses Google Gemini embeddings through one `GEMINI_API_KEY`.
+
+```toml
+[embeddings]
+provider = "gemini"
+model = "gemini-embedding-2"
+api_key_env = "GEMINI_API_KEY"
+dimensions = 768
+```
+
 ### sentence-transformers
 Local Hugging Face models.
 
@@ -72,6 +83,18 @@ provider = "openai-compatible"
 model = "gpt-4o-mini"
 base_url = "https://api.openai.com"
 ```
+
+### gemini
+
+```toml
+[llm]
+provider = "gemini"
+model = "gemini-3-flash-preview"
+api_key_env = "GEMINI_API_KEY"
+```
+
+For benchmark judging, use an explicit judge model such as
+`gemini-3.1-pro-preview`.
 
 ## Testing Providers
 

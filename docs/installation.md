@@ -69,6 +69,8 @@ openbook --version
 openbook doctor
 ```
 
+For common setup failures, see [troubleshooting.md](troubleshooting.md).
+
 ## One-command Project Setup
 
 ```bash

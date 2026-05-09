@@ -119,6 +119,7 @@ api_key_env = ""
 Provider keys are read from environment variables, not committed config files. For Gemini, set `GEMINI_API_KEY`; for OpenAI-compatible endpoints, set `OPENAI_API_KEY`.
 
 See [docs/config.md](docs/config.md).
+Troubleshooting is in [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Repository Structure
 

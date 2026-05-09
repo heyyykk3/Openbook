@@ -49,7 +49,7 @@ Public alpha means "useful, honest, and debuggable," not polished. OpenBook shou
 - "Why not just use X?" is answered with respect, especially for Mem0, Basic Memory, Cognee, Zep/Graphiti, Letta Code, and Memento MCP.
 - The comparison does not misrepresent competitors or flatten them into strawmen.
 - The docs state that OpenBook is early and benchmark results are pending.
-- A troubleshooting page or section covers the top five expected alpha failures.
+- A troubleshooting page or section covers the top five expected alpha failures. (`docs/troubleshooting.md`)
 - Security/privacy notes explain local storage, possible sensitive data, backups, sharing, and deletion.
 - Contribution docs define what memory-related changes need tests.
 
