@@ -137,6 +137,10 @@ Public benchmark tiers:
 3. LoCoMo or other conversational memory benchmark
 4. Coding-agent memory benchmark: project decision recall, command recall, bug-fix recall
 
+OpenBook should expose benchmarks the way serious memory projects do: runnable
+commands, raw outputs, exact model names, charts, and a clear policy for what is
+or is not comparable. See `docs/benchmarking-policy.md`.
+
 Do not compare to Mem0/Zep/Signet unless:
 
 - dataset split is identical
@@ -165,6 +169,7 @@ Release `v0.1.0-alpha` when:
 - No-key FTS quickstart works in under 60 seconds.
 - Gemini or Ollama provider smoke test is documented.
 - One real benchmark report is published.
+- Benchmark reproduction docs and raw output format are published.
 
 Then release `v0.2.0` when:
 

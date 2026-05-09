@@ -12,6 +12,7 @@ Openbook/
 │   └── server/                   # Reserved for future runtime/server work
 ├── tests/                        # Unit and benchmark-harness tests
 ├── docs/                         # User and release documentation
+├── benchmarks/README.md          # Benchmark entry points and output contract
 ├── benchmarks/longmemeval/       # Reproducible benchmark harness
 ├── .github/                      # CI and contribution templates
 ├── pyproject.toml                # Package metadata and dependencies

@@ -189,7 +189,10 @@ python benchmarks/longmemeval/openbook_longmemeval.py \
   --report-dir benchmarks/longmemeval/results/openbook-longmemeval-s-gemini-hybrid
 ```
 
-See [docs/benchmarks.md](docs/benchmarks.md).
+See [benchmarks/README.md](benchmarks/README.md) for runnable entry points,
+[docs/benchmarks.md](docs/benchmarks.md) for details, and
+[docs/benchmarking-policy.md](docs/benchmarking-policy.md) for what counts as a
+publishable score.
 
 ## Release Plan
 

@@ -2,6 +2,10 @@
 
 OpenBook uses real memory/RAG benchmarks, starting with LongMemEval.
 
+For benchmark publication rules and comparison standards, see
+[benchmarking-policy.md](benchmarking-policy.md). For runnable benchmark entry
+points, see [../benchmarks/README.md](../benchmarks/README.md).
+
 ## LongMemEval
 
 LongMemEval is the first benchmark target because it is a widely used long-term
@@ -140,12 +144,12 @@ python benchmarks/longmemeval/openbook_longmemeval.py \
 
 ## Current Scope
 
-The current harness measures retrieval quality only. That is the correct first
-step for OpenBook because the MVP is a memory and retrieval layer.
+The harness measures retrieval quality and optional end-to-end QA. Retrieval
+results are useful for memory-layer development. QA results are better for
+public comparisons, but they must disclose the reader and judge model.
 
 Future benchmark tracks should add:
 
-- LongMemEval end-to-end QA with an LLM judge
 - LoCoMo long-term conversational memory
 - BEIR/MTEB-style retrieval comparisons for embedding providers
 - OpenBook Repo Memory Benchmark for coding-agent project memory
