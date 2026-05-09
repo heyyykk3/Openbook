@@ -58,6 +58,7 @@ See [docs/installation.md](docs/installation.md) for details.
 | `openbook review` | Show pending proposals |
 | `openbook approve <id>` | Approve a memory |
 | `openbook reject <id>` | Reject a memory |
+| `openbook delete <id>` | Archive or delete a memory |
 | `openbook export` | Generate Markdown/JSON exports |
 | `openbook doctor` | Check health of database, config, and providers |
 | `openbook prune` | Archive stale memories |

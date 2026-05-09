@@ -19,6 +19,7 @@ from openbook.core.db import get_connection, initialize_database
 from openbook.core.exports import export_all, export_json
 from openbook.core.memory import (
     approve_memory,
+    delete_memory,
     get_review_queue,
     reject_memory,
     remember,
@@ -546,6 +547,23 @@ def reject_cmd(memory_id: int, project: Optional[str]) -> None:
     project_id = _get_or_create_project(conn, project_root)
     if reject_memory(conn, project_id, memory_id):
         click.echo(f"Rejected memory {memory_id}")
+    else:
+        click.echo(f"Memory {memory_id} not found.", err=True)
+        sys.exit(1)
+
+
+@cli.command("delete")
+@click.argument("memory_id", type=int)
+@click.option("--hard", is_flag=True, help="Physically delete instead of archiving.")
+@click.option("--project", default=None)
+def delete_cmd(memory_id: int, hard: bool, project: Optional[str]) -> None:
+    """Archive or delete a memory."""
+    project_root = _get_project_root(project)
+    conn = get_connection(project_root)
+    project_id = _get_or_create_project(conn, project_root)
+    if delete_memory(conn, project_id, memory_id, hard=hard):
+        action = "Deleted" if hard else "Archived"
+        click.echo(f"{action} memory {memory_id}")
     else:
         click.echo(f"Memory {memory_id} not found.", err=True)
         sys.exit(1)

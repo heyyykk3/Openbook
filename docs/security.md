@@ -47,9 +47,15 @@ Quarantined memories:
 You can delete individual memories or perform a full local wipe:
 
 ```bash
-# Delete a specific memory (future feature)
-# Full wipe
+openbook delete 123
+openbook delete 123 --hard
 rm -rf .openbook
+```
+
+PowerShell full wipe:
+
+```powershell
+Remove-Item -Recurse -Force .openbook
 ```
 
 ## Provenance

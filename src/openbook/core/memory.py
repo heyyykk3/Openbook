@@ -196,6 +196,26 @@ def reject_memory(conn: sqlite3.Connection, project_id: int, memory_id: int) -> 
     return bool(conn.execute("SELECT changes()").fetchone()[0] > 0)
 
 
+def delete_memory(
+    conn: sqlite3.Connection,
+    project_id: int,
+    memory_id: int,
+    *,
+    hard: bool = False,
+) -> bool:
+    if hard:
+        conn.execute(
+            "DELETE FROM memories WHERE id = ? AND project_id = ?",
+            (memory_id, project_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ? AND project_id = ?",
+            (time.time(), memory_id, project_id),
+        )
+    return bool(conn.execute("SELECT changes()").fetchone()[0] > 0)
+
+
 def get_review_queue(conn: sqlite3.Connection, project_id: int, limit: int = 50) -> list[dict[str, Any]]:
     rows = conn.execute(
         """

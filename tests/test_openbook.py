@@ -19,6 +19,7 @@ from openbook.core.db import get_connection, initialize_database
 from openbook.core.exports import export_all, export_json
 from openbook.core.memory import (
     approve_memory,
+    delete_memory,
     get_review_queue,
     reject_memory,
     remember,
@@ -248,6 +249,22 @@ class TestReview:
         assert reject_memory(conn, project_id, mid)
         row = conn.execute("SELECT status FROM memories WHERE id = ?", (mid,)).fetchone()
         assert row["status"] == "rejected"
+
+    def test_delete_archives_memory(self, conn, project_id):
+        mid = remember(conn, project_id, "Archive me", memory_type="fact", status="approved")
+
+        assert delete_memory(conn, project_id, mid)
+
+        row = conn.execute("SELECT status FROM memories WHERE id = ?", (mid,)).fetchone()
+        assert row["status"] == "archived"
+
+    def test_delete_hard_removes_memory(self, conn, project_id):
+        mid = remember(conn, project_id, "Delete me", memory_type="fact", status="approved")
+
+        assert delete_memory(conn, project_id, mid, hard=True)
+
+        row = conn.execute("SELECT status FROM memories WHERE id = ?", (mid,)).fetchone()
+        assert row is None
 
 
 class TestSearch:
