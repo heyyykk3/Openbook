@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openbook-memory"
+version = "0.1.0"
+description = "OpenBook: one folder, one shared memory book, every coding agent."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "OpenBook Contributors"},
+]
+keywords = ["memory", "rag", "agent", "sqlite", "mcp", "coding"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "click>=8.0",
+    "toml>=0.10.2",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+vector = ["sqlite-vec>=0.1.0"]
+local = ["sentence-transformers>=3.0.0", "torch>=2.0.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0", "ruff>=0.5.0", "mypy>=1.10.0"]
+
+[project.scripts]
+openbook = "openbook.cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/heyyykk3/Openbook"
+Documentation = "https://github.com/heyyykk3/Openbook#readme"
+Repository = "https://github.com/heyyykk3/Openbook"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openbook"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

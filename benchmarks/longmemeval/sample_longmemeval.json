@@ -1,0 +1,142 @@
+[
+  {
+    "question_id": "sample_single_user",
+    "question_type": "single-session-user",
+    "question": "What command does Jordan use to run the test suite?",
+    "answer": "Jordan runs the test suite with pytest -q.",
+    "question_date": "2026-05-09",
+    "haystack_session_ids": ["s1", "s2", "s3"],
+    "haystack_dates": ["2026-05-01", "2026-05-02", "2026-05-03"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "I am choosing between FastAPI and Flask for the service."
+        },
+        {
+          "role": "assistant",
+          "content": "FastAPI is a good fit if you want typed request models."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "For this repo, I run the test suite with pytest -q before every commit.",
+          "has_answer": true
+        },
+        {
+          "role": "assistant",
+          "content": "Got it. The test command is pytest -q."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "The production database is Postgres, but local development uses SQLite."
+        },
+        {
+          "role": "assistant",
+          "content": "I will remember the local and production database split."
+        }
+      ]
+    ],
+    "answer_session_ids": ["s2"]
+  },
+  {
+    "question_id": "sample_multi_session",
+    "question_type": "multi-session",
+    "question": "Which city did Maya move to, and what tool does she use for project planning?",
+    "answer": "Maya moved to Toronto and uses Linear for project planning.",
+    "question_date": "2026-05-09",
+    "haystack_session_ids": ["m1", "m2", "m3", "m4"],
+    "haystack_dates": ["2026-04-11", "2026-04-18", "2026-04-25", "2026-05-02"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "Maya moved to Toronto last week and is still setting up her workspace.",
+          "has_answer": true
+        },
+        {
+          "role": "assistant",
+          "content": "Toronto noted as Maya's new city."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "We changed the logging library from loguru to structlog."
+        },
+        {
+          "role": "assistant",
+          "content": "The current logging library is structlog."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "Maya tracks project planning in Linear, not Trello.",
+          "has_answer": true
+        },
+        {
+          "role": "assistant",
+          "content": "Linear is the project planning tool for Maya."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "The frontend uses Vite and React."
+        },
+        {
+          "role": "assistant",
+          "content": "Vite and React are the frontend stack."
+        }
+      ]
+    ],
+    "answer_session_ids": ["m1", "m3"]
+  },
+  {
+    "question_id": "sample_knowledge_update",
+    "question_type": "knowledge-update",
+    "question": "What is the current deployment target?",
+    "answer": "The current deployment target is Fly.io.",
+    "question_date": "2026-05-09",
+    "haystack_session_ids": ["u1", "u2", "u3"],
+    "haystack_dates": ["2026-03-01", "2026-04-01", "2026-05-01"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "The initial deployment target is Railway."
+        },
+        {
+          "role": "assistant",
+          "content": "Railway is the deployment target for now."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "We moved deployment away from Railway. The current deployment target is Fly.io.",
+          "has_answer": true
+        },
+        {
+          "role": "assistant",
+          "content": "Updated: Fly.io is now the current deployment target."
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "Use pnpm for package management."
+        },
+        {
+          "role": "assistant",
+          "content": "pnpm is the package manager."
+        }
+      ]
+    ],
+    "answer_session_ids": ["u2"]
+  }
+]
