@@ -46,5 +46,8 @@ jobs:
           --searches 5
           --report-dir benchmarks/resource/results/ci
 
+      - name: Build wheel
+        run: python -m pip wheel . -w dist --no-deps
+
       - name: Mypy
         run: python -m mypy src
