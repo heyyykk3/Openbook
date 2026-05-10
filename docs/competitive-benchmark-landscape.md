@@ -35,6 +35,8 @@ OpenBook can honestly claim today:
 - optional provider-backed benchmark runs with Ollama, Gemini, OpenAI-compatible APIs, and sentence-transformers
 - LongMemEval_S no-key FTS retrieval baseline: R@10 94.90%, MRR 0.9143
 - LongMemEval_S Gemini hybrid QA run: R@10 99.43%, MRR 0.9311, judged QA accuracy 84.00%
+- Repo Memory benchmark is now runnable as `openbook benchmark repo-memory`; it is an OpenBook-specific coding-agent workflow benchmark, not a LoCoMo/LongMemEval/BEAM replacement.
+- Repo Memory local 11-task report: Hit@3 100.00%, MRR 1.0000, citation presence 100.00%, stale/secret exclusion 100.00%.
 
 OpenBook should not claim yet:
 

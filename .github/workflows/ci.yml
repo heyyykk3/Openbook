@@ -46,6 +46,11 @@ jobs:
           --searches 5
           --report-dir benchmarks/resource/results/ci
 
+      - name: Repo memory benchmark smoke test
+        run: >
+          python -m openbook.cli.main benchmark repo-memory
+          --report-dir benchmarks/repo-memory/results/ci
+
       - name: Build wheel
         run: python -m pip wheel . -w dist --no-deps
 

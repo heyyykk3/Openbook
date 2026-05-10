@@ -135,7 +135,7 @@ Public benchmark tiers:
 1. LongMemEval retrieval baseline: FTS-only, no API key
 2. LongMemEval full QA: Gemini embeddings + Gemini reader + Gemini judge
 3. LoCoMo or other conversational memory benchmark
-4. Coding-agent memory benchmark: project decision recall, command recall, bug-fix recall
+4. Coding-agent memory benchmark: project decision recall, command recall, bug-fix recall (`openbook benchmark repo-memory`)
 
 OpenBook should expose benchmarks the way serious memory projects do: runnable
 commands, raw outputs, exact model names, charts, and a clear policy for what is

@@ -15,6 +15,7 @@ Openbook/
 |-- docs/                            # User and release documentation
 |-- benchmarks/README.md             # Benchmark entry points and output contract
 |-- benchmarks/longmemeval/          # Reproducible benchmark harness
+|-- benchmarks/repo_memory_benchmark.py # Source checkout wrapper
 |-- benchmarks/resource_benchmark.py # Source checkout wrapper
 |-- .github/                         # CI and contribution templates
 |-- pyproject.toml                   # Package metadata and dependencies

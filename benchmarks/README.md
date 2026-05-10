@@ -20,6 +20,7 @@ published score should include:
 | Benchmark | Path | Status | What It Measures |
 | --- | --- | --- | --- |
 | LongMemEval | `benchmarks/longmemeval/` | Active | Long-term memory retrieval and optional QA |
+| Repo memory benchmark | `openbook benchmark repo-memory` or `benchmarks/repo_memory_benchmark.py` | Active | Coding-agent project memory recall, citations, handoffs, stale/secret exclusion |
 | Resource benchmark | `openbook benchmark resource` or `benchmarks/resource_benchmark.py` | Active | DB size, latency, context size, process memory |
 
 Published clean reports live under `benchmarks/published/`. Ignored scratch
@@ -29,6 +30,7 @@ Current published reports:
 
 - `benchmarks/published/longmemeval-s-fts-full-500/`
 - `benchmarks/published/longmemeval-s-gemini-hybrid-qa-full-500/`
+- `benchmarks/published/repo-memory-local-11-task/`
 
 ## Quick Smoke Test
 
@@ -89,6 +91,7 @@ and completed records will be skipped.
 No API key required:
 
 ```bash
+openbook benchmark repo-memory
 openbook benchmark resource --memories 100 --searches 20
 ```
 

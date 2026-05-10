@@ -169,6 +169,27 @@ class TestInit:
         assert (report_dir / "summary.md").exists()
         assert (report_dir / "results.json").exists()
 
+    def test_benchmark_repo_memory_command_writes_reports(self, tmp_path):
+        report_dir = tmp_path / "repo-memory-report"
+        work_dir = tmp_path / "repo-memory-work"
+        runner = CliRunner()
+
+        result = runner.invoke(
+            cli,
+            [
+                "benchmark",
+                "repo-memory",
+                "--report-dir",
+                str(report_dir),
+                "--work-dir",
+                str(work_dir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (report_dir / "summary.md").exists()
+        assert (report_dir / "results.json").exists()
+
 
 class TestSchema:
     def test_projects_table(self, conn):

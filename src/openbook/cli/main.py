@@ -29,6 +29,8 @@ from openbook.core.models import ContextPack
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
 from openbook.core.search import get_project_brief
 from openbook.core.security import ensure_openbookignore
+from openbook.benchmarks.repo_memory import run_benchmark as run_repo_memory_benchmark
+from openbook.benchmarks.repo_memory import write_reports as write_repo_memory_reports
 from openbook.benchmarks.resource import run_benchmark as run_resource_benchmark
 from openbook.benchmarks.resource import write_reports as write_resource_reports
 from openbook.providers.embeddings import get_embedding_provider
@@ -342,8 +344,34 @@ def benchmark_group() -> None:
 def benchmark_list() -> None:
     """List benchmark tracks."""
     click.echo("Available benchmark tracks:")
+    click.echo("  repo-memory No-key coding-agent repo memory benchmark")
     click.echo("  resource    No-key SQLite footprint and latency benchmark")
     click.echo("  longmemeval External harness in benchmarks/longmemeval")
+
+
+@benchmark_group.command("repo-memory")
+@click.option("--top-k", type=int, default=3, show_default=True)
+@click.option(
+    "--report-dir",
+    type=click.Path(path_type=Path),
+    default=Path("benchmarks/repo-memory/results/openbook-repo-memory"),
+    show_default=True,
+)
+@click.option("--work-dir", type=click.Path(path_type=Path), default=None)
+def benchmark_repo_memory(top_k: int, report_dir: Path, work_dir: Optional[Path]) -> None:
+    """Run the no-key coding-agent repo memory benchmark."""
+    if top_k < 1:
+        raise click.ClickException("top-k must be at least 1")
+    if work_dir is None:
+        with tempfile.TemporaryDirectory(prefix="openbook-repo-memory-") as temp_dir:
+            results = run_repo_memory_benchmark(work_dir=Path(temp_dir), top_k=top_k)
+            write_repo_memory_reports(results, report_dir)
+    else:
+        results = run_repo_memory_benchmark(work_dir=work_dir, top_k=top_k)
+        write_repo_memory_reports(results, report_dir)
+
+    click.echo(f"Wrote {report_dir / 'summary.md'}")
+    click.echo(f"Wrote {report_dir / 'results.json'}")
 
 
 @benchmark_group.command("resource")

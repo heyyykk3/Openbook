@@ -1,0 +1,12 @@
+group,task_count,hit@1,hit@3,mrr,citation_presence,stale_or_secret_excluded
+overall,11,1.0,1.0,1.0,1.0,1.0
+benchmark,1,1.0,1.0,1.0,1.0,1.0
+command,1,1.0,1.0,1.0,1.0,1.0
+convention,1,1.0,1.0,1.0,1.0,1.0
+decision,1,1.0,1.0,1.0,1.0,1.0
+failure,1,1.0,1.0,1.0,1.0,1.0
+handoff,1,1.0,1.0,1.0,1.0,1.0
+provider,1,1.0,1.0,1.0,1.0,1.0
+release,1,1.0,1.0,1.0,1.0,1.0
+security,1,1.0,1.0,1.0,1.0,1.0
+setup,2,1.0,1.0,1.0,1.0,1.0

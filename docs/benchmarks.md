@@ -8,14 +8,20 @@ points, see [../benchmarks/README.md](../benchmarks/README.md).
 
 ## Installed No-Key Benchmark
 
-Every installed OpenBook package includes a lightweight resource benchmark:
+Every installed OpenBook package includes two no-key benchmarks:
 
 ```bash
+openbook benchmark repo-memory
 openbook benchmark resource --memories 100 --searches 20
 ```
 
-It writes `summary.md` and `results.json` and does not require API keys, model
-downloads, Docker, or benchmark datasets.
+They write `summary.md`, `results.json`, raw records, CSV metrics, and charts.
+They do not require API keys, model downloads, Docker, or benchmark datasets.
+
+`repo-memory` is the OpenBook-specific benchmark. It checks project command
+recall, architecture decision recall, setup gotchas, coding conventions,
+failure recovery, cross-agent handoff recall, citation presence, and exclusion
+of stale/quarantined memory.
 
 ## Published Results
 
@@ -25,6 +31,9 @@ downloads, Docker, or benchmark datasets.
 - [LongMemEval_S Gemini hybrid QA full 500 report](../benchmarks/published/longmemeval-s-gemini-hybrid-qa-full-500/summary.md):
   Gemini embeddings plus Gemini reader/judge, including retrieval and judged QA
   metrics.
+- [Repo Memory local 11-task report](../benchmarks/published/repo-memory-local-11-task/summary.md):
+  no-key coding-agent memory workflow benchmark with command, decision,
+  convention, failure, handoff, provider, release, setup, and security tasks.
 
 ## LongMemEval
 

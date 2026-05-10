@@ -63,6 +63,8 @@ See [docs/installation.md](docs/installation.md) for details.
 | `openbook doctor` | Check health of database, config, and providers |
 | `openbook prune` | Archive stale memories |
 | `openbook reindex` | Rebuild FTS/vector indexes |
+| `openbook benchmark repo-memory` | Run the no-key coding-agent repo memory benchmark |
+| `openbook benchmark resource` | Run the no-key local footprint benchmark |
 | `openbook providers list` | List providers |
 | `openbook providers test` | Test configured providers |
 
@@ -148,6 +150,7 @@ OpenBook starts with LongMemEval, a standard long-term memory benchmark.
 Run the installed no-key resource benchmark:
 
 ```bash
+openbook benchmark repo-memory
 openbook benchmark resource --memories 100 --searches 20
 ```
 
