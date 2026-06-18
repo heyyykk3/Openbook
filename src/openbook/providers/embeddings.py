@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import time
 from typing import Any, Optional
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 
@@ -216,13 +217,27 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         timeout: float,
         attempts: int = 6,
     ) -> dict[str, Any]:
+        self._validate_post_url(url)
         with httpx.Client(timeout=timeout) as client:
             for attempt in range(attempts):
                 try:
                     resp = client.post(url, headers=self._headers(), json=payload)
-                except (httpx.TimeoutException, httpx.TransportError):
+                except httpx.TimeoutException as exc:
                     if attempt == attempts - 1:
-                        raise
+                        raise RuntimeError(
+                            "Gemini embedding request timed out while connecting to "
+                            f"{self._safe_url_origin(url)}: {exc}. Check the embedding "
+                            "endpoint/base URL and DNS/network access."
+                        ) from exc
+                    time.sleep(_retry_delay(None, attempt))
+                    continue
+                except httpx.TransportError as exc:
+                    if attempt == attempts - 1:
+                        raise RuntimeError(
+                            "Gemini embedding request failed while connecting to "
+                            f"{self._safe_url_origin(url)}: {exc}. Check the embedding "
+                            "endpoint/base URL and DNS/network access."
+                        ) from exc
                     time.sleep(_retry_delay(None, attempt))
                     continue
                 if resp.status_code not in _RETRY_STATUS_CODES:
@@ -233,6 +248,20 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
                     resp.raise_for_status()
                 time.sleep(_retry_delay(resp, attempt))
         return {}
+
+    def _validate_post_url(self, url: str) -> None:
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise RuntimeError(
+                f"Gemini embedding request has invalid URL {url!r}. Set the Gemini "
+                "embedding base_url to an absolute http(s) URL."
+            )
+
+    def _safe_url_origin(self, url: str) -> str:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return "<invalid embedding URL>"
+        return urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
 
     def _embed_request(self, text: str, task_type: str) -> dict[str, Any]:
         request: dict[str, Any] = {

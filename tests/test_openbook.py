@@ -456,6 +456,17 @@ class TestProviders:
         assert p.model == "gemini-embedding-2"
         assert p.dimensions == 768
 
+    def test_gemini_embedding_rejects_invalid_base_url(self):
+        p = GeminiEmbeddingProvider(
+            model="gemini-embedding-2",
+            api_key="test-key",
+            base_url="https://",
+            output_dimensionality=768,
+        )
+
+        with pytest.raises(RuntimeError, match="invalid URL"):
+            p.embed_query("hello")
+
     def test_gemini_llm_provider_config(self):
         p = get_llm_provider(
             {
