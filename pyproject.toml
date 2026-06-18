@@ -38,8 +38,8 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.23.0", "ruff>=0.5.0", "mypy>=1.10.0"]
 openbook = "openbook.cli.main:cli"
 
 [project.urls]
-Homepage = "https://github.com/heyyykk3/Openbook"
-Documentation = "https://github.com/heyyykk3/Openbook#readme"
+Homepage = "https://heyyykk3.github.io/Openbook/"
+Documentation = "https://heyyykk3.github.io/Openbook/"
 Repository = "https://github.com/heyyykk3/Openbook"
 
 [tool.hatch.build.targets.wheel]
