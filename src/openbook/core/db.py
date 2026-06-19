@@ -6,6 +6,8 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
+from types import TracebackType
+from typing import Literal
 
 SCHEMA_VERSION = 1
 
@@ -250,8 +252,22 @@ DEFAULT_CHAPTERS = [
 MIGRATIONS: dict[int, str] = {}
 
 
+class OpenBookConnection(sqlite3.Connection):
+    """SQLite connection whose context manager commits/rolls back and closes."""
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> Literal[False]:
+        super().__exit__(exc_type, exc_value, traceback)
+        self.close()
+        return False
+
+
 def _get_db_path(project_root: Path) -> Path:
-    return project_root / ".openbook" / "openbook.sqlite"
+    return (project_root / ".openbook" / "openbook.sqlite").expanduser().resolve()
 
 
 def _pragma_setup(conn: sqlite3.Connection) -> None:
@@ -261,13 +277,28 @@ def _pragma_setup(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA synchronous=NORMAL")
 
 
-def get_connection(project_root: Path, timeout: float = 5.0) -> sqlite3.Connection:
-    db_path = _get_db_path(project_root)
+def _connect_sqlite(db_path: Path, timeout: float) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), timeout=timeout, isolation_level=None)
+    try:
+        conn = sqlite3.connect(
+            str(db_path),
+            timeout=timeout,
+            isolation_level=None,
+            factory=OpenBookConnection,
+        )
+    except sqlite3.OperationalError as exc:
+        raise sqlite3.OperationalError(f"unable to open SQLite database at {db_path}: {exc}") from exc
     conn.row_factory = sqlite3.Row
-    _pragma_setup(conn)
+    try:
+        _pragma_setup(conn)
+    except Exception:
+        conn.close()
+        raise
     return conn
+
+
+def get_connection(project_root: Path, timeout: float = 5.0) -> sqlite3.Connection:
+    return _connect_sqlite(_get_db_path(project_root), timeout)
 
 
 def _acquire_migration_lock(conn: sqlite3.Connection, holder: str) -> bool:
@@ -299,10 +330,7 @@ def _release_migration_lock(conn: sqlite3.Connection) -> None:
 
 def initialize_database(project_root: Path) -> None:
     db_path = _get_db_path(project_root)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), timeout=30.0, isolation_level=None)
-    conn.row_factory = sqlite3.Row
-    _pragma_setup(conn)
+    conn = _connect_sqlite(db_path, timeout=30.0)
 
     # The migration lock has to exist before we can acquire it on a fresh DB.
     conn.execute("""

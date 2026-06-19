@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -495,6 +496,14 @@ class TestConcurrency:
     def test_wal_mode(self, conn):
         row = conn.execute("PRAGMA journal_mode").fetchone()
         assert row[0].lower() == "wal"
+
+    def test_connection_context_manager_closes(self, temp_project):
+        with get_connection(temp_project) as connection:
+            row = connection.execute("SELECT 1 as n").fetchone()
+            assert row["n"] == 1
+
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            connection.execute("SELECT 1")
 
     def test_multiple_readers(self, temp_project):
         conn1 = get_connection(temp_project)
