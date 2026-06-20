@@ -12,6 +12,8 @@ from typing import Any, Literal, cast
 import toml
 
 ClientName = Literal["codex", "claude-code", "claude-desktop", "cursor", "generic"]
+TransportName = Literal["stdio", "http"]
+DEFAULT_HTTP_MCP_URL = "https://localhost:8457/mcp"
 
 
 @dataclass(frozen=True)
@@ -22,8 +24,21 @@ class InstallResult:
     message: str
 
 
-def mcp_server_config(project_root: Path, client: str) -> dict[str, Any]:
-    """Return a stdio MCP config pinned to one OpenBook project."""
+def mcp_server_config(
+    project_root: Path,
+    client: str,
+    *,
+    transport: str | None = "stdio",
+    url: str | None = None,
+) -> dict[str, Any]:
+    """Return an MCP config for either stdio or streamable HTTP transport."""
+    normalized_transport = normalize_transport(transport)
+    if normalized_transport == "http":
+        return {
+            "url": url or DEFAULT_HTTP_MCP_URL,
+            "startup_timeout_sec": 10,
+            "tool_timeout_sec": 120,
+        }
     return {
         "command": "openbook",
         "args": ["mcp"],
@@ -35,8 +50,23 @@ def mcp_server_config(project_root: Path, client: str) -> dict[str, Any]:
     }
 
 
-def mcp_config_document(project_root: Path, client: str = "generic") -> dict[str, Any]:
-    return {"mcpServers": {"openbook": mcp_server_config(project_root, client)}}
+def mcp_config_document(
+    project_root: Path,
+    client: str = "generic",
+    *,
+    transport: str | None = "stdio",
+    url: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "mcpServers": {
+            "openbook": mcp_server_config(
+                project_root,
+                client,
+                transport=transport,
+                url=url,
+            )
+        }
+    }
 
 
 def install_mcp_client(
@@ -46,37 +76,49 @@ def install_mcp_client(
     dry_run: bool = False,
     codex_bin: str = "codex",
     config_path: Path | None = None,
+    transport: str | None = "stdio",
+    url: str | None = None,
 ) -> InstallResult:
     normalized = normalize_client(client)
     project_root = project_root.resolve()
+    transport = normalize_transport(transport)
     if normalized == "cursor":
         return install_json_config(
             config_path or project_root / ".cursor" / "mcp.json",
-            mcp_config_document(project_root, "cursor"),
+            mcp_config_document(project_root, "cursor", transport=transport, url=url),
             client="cursor",
             dry_run=dry_run,
         )
     if normalized == "claude-code":
         return install_json_config(
             config_path or project_root / ".mcp.json",
-            mcp_config_document(project_root, "claude-code"),
+            mcp_config_document(project_root, "claude-code", transport=transport, url=url),
             client="claude-code",
             dry_run=dry_run,
         )
     if normalized == "claude-desktop":
         return install_json_config(
             config_path or default_claude_desktop_config_path(),
-            mcp_config_document(project_root, "claude-desktop"),
+            mcp_config_document(project_root, "claude-desktop", transport=transport, url=url),
             client="claude-desktop",
             dry_run=dry_run,
         )
     if normalized == "codex":
-        return install_codex(codex_bin, project_root, dry_run=dry_run)
+        return install_codex(
+            codex_bin,
+            project_root,
+            dry_run=dry_run,
+            transport=transport,
+            url=url,
+        )
     return InstallResult(
         client="generic",
         mode="print",
         target="stdout",
-        message=json.dumps(mcp_config_document(project_root, "generic"), indent=2),
+        message=json.dumps(
+            mcp_config_document(project_root, "generic", transport=transport, url=url),
+            indent=2,
+        ),
     )
 
 
@@ -96,6 +138,19 @@ def normalize_client(client: str | None) -> ClientName:
         raise ValueError(
             "Unsupported MCP client. Use one of: codex, claude-code, claude-desktop, cursor, generic"
         )
+    return value  # type: ignore[return-value]
+
+
+def normalize_transport(transport: str | None) -> TransportName:
+    value = (transport or "stdio").strip().lower().replace("_", "-")
+    aliases = {
+        "streamable-http": "http",
+        "https": "http",
+        "url": "http",
+    }
+    value = aliases.get(value, value)
+    if value not in {"stdio", "http"}:
+        raise ValueError("Unsupported MCP transport. Use one of: stdio, http")
     return value  # type: ignore[return-value]
 
 
@@ -126,16 +181,27 @@ def merge_mcp_config(existing: dict[str, Any], update: dict[str, Any]) -> dict[s
     return merged
 
 
-def install_codex(codex_bin: str, project_root: Path, *, dry_run: bool) -> InstallResult:
-    env_args = [
-        "--env",
-        f"OPENBOOK_PROJECT={project_root}",
-        "--env",
-        "OPENBOOK_CLIENT=codex",
-        "--env",
-        "OPENBOOK_AGENT=openbook-codex",
-    ]
-    command = [codex_bin, "mcp", "add", "openbook", *env_args, "--", "openbook", "mcp"]
+def install_codex(
+    codex_bin: str,
+    project_root: Path,
+    *,
+    dry_run: bool,
+    transport: str | None = "stdio",
+    url: str | None = None,
+) -> InstallResult:
+    normalized_transport = normalize_transport(transport)
+    if normalized_transport == "http":
+        command = [codex_bin, "mcp", "add", "openbook", "--url", url or DEFAULT_HTTP_MCP_URL]
+    else:
+        env_args = [
+            "--env",
+            f"OPENBOOK_PROJECT={project_root}",
+            "--env",
+            "OPENBOOK_CLIENT=codex",
+            "--env",
+            "OPENBOOK_AGENT=openbook-codex",
+        ]
+        command = [codex_bin, "mcp", "add", "openbook", *env_args, "--", "openbook", "mcp"]
     if dry_run:
         return InstallResult(
             client="codex",

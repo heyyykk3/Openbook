@@ -70,14 +70,18 @@ See [docs/installation.md](docs/installation.md) for details.
 
 ## MCP
 
-OpenBook supports MCP stdio by default. MCP tools and CLI commands route through
-the same OpenBook service boundary; SQLite is the internal ledger, not a separate
-integration surface for agents to manage.
+OpenBook supports MCP stdio by default and streamable HTTP when a shared runtime
+is already running. MCP tools and CLI commands route through the same OpenBook
+service boundary; SQLite is the internal ledger, not a separate integration
+surface for agents to manage.
 
 ```bash
 openbook mcp install --client codex --project .
 openbook mcp install --client claude-code --project .
 openbook mcp install --client cursor --project .
+
+# Use this for an existing shared HTTP service such as https://localhost:8457/mcp
+openbook mcp install --client codex --transport http --url https://localhost:8457/mcp
 ```
 
 MCP tools: `openbook_remember`, `openbook_search`, `openbook_brief`, `openbook_handoff`, `openbook_cite`, `openbook_review`, `openbook_status`.

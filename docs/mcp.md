@@ -1,6 +1,7 @@
 # MCP Integration
 
-OpenBook supports the Model Context Protocol (MCP) via stdio transport.
+OpenBook supports the Model Context Protocol (MCP) via stdio transport and
+streamable HTTP transport.
 
 Status: Codex/Cursor/Claude config generation is implemented and covered by
 tests. Full end-to-end validation inside every client is still an alpha launch
@@ -34,6 +35,29 @@ Initialize and install in one command:
 
 ```bash
 openbook setup --project . --yes --client codex
+```
+
+## HTTP Transport
+
+If you already run a shared OpenBook HTTP service, install the client against
+that URL instead of launching a per-client stdio process:
+
+```bash
+openbook mcp install --client codex --transport http --url https://localhost:8457/mcp
+```
+
+For JSON-based clients, the generated config uses a URL entry:
+
+```json
+{
+  "mcpServers": {
+    "openbook": {
+      "url": "https://localhost:8457/mcp",
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 120
+    }
+  }
+}
 ```
 
 Claude Desktop user config:

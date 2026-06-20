@@ -55,6 +55,15 @@ Check that the generated config exists:
 Restart the client after writing MCP config. Many MCP clients load stdio server
 config only at startup.
 
+## HTTP MCP Returns 406
+
+Streamable HTTP MCP endpoints require an event-stream capable client. A bare
+`curl https://localhost:8457/mcp` may return `406 Not Acceptable`; verify with:
+
+```bash
+curl -k -H 'Accept: application/json, text/event-stream' https://localhost:8457/mcp
+```
+
 ## Database Does Not Exist
 
 Initialize the project:

@@ -53,11 +53,15 @@ def init(path: str) -> None:
 @click.option("--client", multiple=True, help="MCP client to install after init.")
 @click.option("--yes", is_flag=True, help="Run non-interactively.")
 @click.option("--dry-run", is_flag=True, help="Preview MCP config changes without writing.")
+@click.option("--transport", default="stdio", type=click.Choice(["stdio", "http"]), help="MCP transport.")
+@click.option("--url", default=None, help="Streamable HTTP MCP URL when --transport=http.")
 def setup(
     project: Optional[str],
     client: tuple[str, ...],
     yes: bool,
     dry_run: bool,
+    transport: str,
+    url: Optional[str],
 ) -> None:
     """Run guided setup wizard."""
     project_root = _get_project_root(project)
@@ -76,7 +80,13 @@ def setup(
 
     for mcp_client in client:
         try:
-            result = install_mcp_client(mcp_client, project_root, dry_run=dry_run)
+            result = install_mcp_client(
+                mcp_client,
+                project_root,
+                dry_run=dry_run,
+                transport=transport,
+                url=url,
+            )
         except (RuntimeError, ValueError) as e:
             raise click.ClickException(str(e)) from e
         click.echo(f"MCP {result.client}: {result.mode} -> {result.target}")
@@ -617,11 +627,15 @@ def mcp_group() -> None:
 @click.option("--project", default=None, help="Project to pin in the MCP server env.")
 @click.option("--dry-run", is_flag=True, help="Print the config/command without writing.")
 @click.option("--config-path", type=click.Path(path_type=Path), default=None, help="Override client config path.")
+@click.option("--transport", default="stdio", type=click.Choice(["stdio", "http"]), help="MCP transport.")
+@click.option("--url", default=None, help="Streamable HTTP MCP URL when --transport=http.")
 def mcp_install(
     client: Optional[str],
     project: Optional[str],
     dry_run: bool,
     config_path: Optional[Path],
+    transport: str,
+    url: Optional[str],
 ) -> None:
     """Install MCP config for Codex, Claude Code, Claude Desktop, or Cursor."""
     project_root = _get_project_root(project)
@@ -631,6 +645,8 @@ def mcp_install(
             project_root,
             dry_run=dry_run,
             config_path=config_path,
+            transport=transport,
+            url=url,
         )
     except (RuntimeError, ValueError) as e:
         raise click.ClickException(str(e)) from e
@@ -642,9 +658,23 @@ def mcp_install(
 
 
 @mcp_group.command("print-config")
-def mcp_print_config() -> None:
+@click.option("--client", default="generic")
+@click.option("--project", default=None)
+@click.option("--transport", default="stdio", type=click.Choice(["stdio", "http"]), help="MCP transport.")
+@click.option("--url", default=None, help="Streamable HTTP MCP URL when --transport=http.")
+def mcp_print_config(client: str, project: Optional[str], transport: str, url: Optional[str]) -> None:
     """Print MCP config."""
-    click.echo(json.dumps(mcp_config_document(detect_project_root(), "generic"), indent=2))
+    click.echo(
+        json.dumps(
+            mcp_config_document(
+                _get_project_root(project),
+                client,
+                transport=transport,
+                url=url,
+            ),
+            indent=2,
+        )
+    )
 
 
 @mcp_group.command("run")

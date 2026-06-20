@@ -26,6 +26,7 @@ from openbook.core.memory import (
     remember,
 )
 from openbook.core.mcp_install import (
+    DEFAULT_HTTP_MCP_URL,
     install_mcp_client,
     mcp_config_document,
     merge_mcp_config,
@@ -351,6 +352,16 @@ class TestMCPInstall:
         assert server["env"]["OPENBOOK_PROJECT"] == str(temp_project.resolve())
         assert server["env"]["OPENBOOK_CLIENT"] == "cursor"
 
+    def test_http_mcp_config_uses_url_transport(self, temp_project):
+        config = mcp_config_document(temp_project, "codex", transport="http")
+        server = config["mcpServers"]["openbook"]
+
+        assert server["url"] == DEFAULT_HTTP_MCP_URL
+        assert server["startup_timeout_sec"] == 10
+        assert server["tool_timeout_sec"] == 120
+        assert "command" not in server
+        assert "env" not in server
+
     def test_merge_mcp_config_preserves_other_servers(self):
         merged = merge_mcp_config(
             {"mcpServers": {"other": {"command": "other"}}},
@@ -381,6 +392,13 @@ class TestMCPInstall:
         assert result.mode == "dry-run"
         assert "codex mcp add openbook" in result.message
         assert "OPENBOOK_PROJECT" in result.message
+
+    def test_codex_http_install_dry_run_prints_url_command(self, temp_project):
+        result = install_mcp_client("codex", temp_project, dry_run=True, transport="http")
+
+        assert result.mode == "dry-run"
+        assert "codex mcp add openbook --url https://localhost:8457/mcp" in result.message
+        assert "OPENBOOK_PROJECT" not in result.message
 
     def test_unknown_mcp_client_is_rejected(self):
         with pytest.raises(ValueError):
