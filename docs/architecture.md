@@ -40,6 +40,17 @@ The schema is designed for `sqlite-vec` to be added later:
 
 ## Retrieval
 
+### Service Boundary
+
+`OpenBookService` is the canonical boundary for agent-facing operations. MCP,
+CLI, and future HTTP transports should call this service instead of duplicating
+project setup, agent/session identity, SQLite connection handling, or memory
+retrieval behavior.
+
+SQLite is the ledger behind the service. Optional vector indexes are internal
+indexes that can be rebuilt from the ledger; they are not separate agent-facing
+sources of truth.
+
 ### Context Packs
 
 The main agent-facing output is a **context pack**:
@@ -116,6 +127,8 @@ openbook/
     base.py        # Provider interfaces
     embeddings.py  # Embedding providers
     llm.py         # LLM providers
+  server/
+    service.py     # Canonical service boundary
   cli/
     main.py        # Click CLI
   mcp/

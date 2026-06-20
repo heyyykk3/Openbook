@@ -70,7 +70,9 @@ See [docs/installation.md](docs/installation.md) for details.
 
 ## MCP
 
-OpenBook supports MCP stdio by default:
+OpenBook supports MCP stdio by default. MCP tools and CLI commands route through
+the same OpenBook service boundary; SQLite is the internal ledger, not a separate
+integration surface for agents to manage.
 
 ```bash
 openbook mcp install --client codex --project .
@@ -229,7 +231,8 @@ See [docs/security.md](docs/security.md).
 
 ## Shared Runtime
 
-One `.openbook/openbook.sqlite` per repo, shared across all agents:
+One OpenBook service boundary per repo, shared across all agents:
+- SQLite ledger stays behind the service
 - WAL mode for concurrent readers
 - Busy timeout and short transactions for safe writes
 - Append-only event log

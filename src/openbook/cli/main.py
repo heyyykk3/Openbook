@@ -3,96 +3,29 @@
 from __future__ import annotations
 
 import json
-import os
-import sqlite3
 import sys
 import tempfile
-import time
 from pathlib import Path
 from typing import Optional
 
 import click
 
 from openbook.core.config import Config
-from openbook.core.context_pack import build_context_pack
-from openbook.core.db import get_connection, initialize_database
-from openbook.core.exports import export_all, export_json
-from openbook.core.memory import (
-    approve_memory,
-    delete_memory,
-    get_review_queue,
-    reject_memory,
-    remember,
-)
 from openbook.core.mcp_install import install_mcp_client, mcp_config_document
-from openbook.core.models import ContextPack
 from openbook.core.project import detect_project_name, detect_project_root, detect_stack
-from openbook.core.search import get_project_brief
-from openbook.core.security import ensure_openbookignore
 from openbook.benchmarks.repo_memory import run_benchmark as run_repo_memory_benchmark
 from openbook.benchmarks.repo_memory import write_reports as write_repo_memory_reports
 from openbook.benchmarks.resource import run_benchmark as run_resource_benchmark
 from openbook.benchmarks.resource import write_reports as write_resource_reports
 from openbook.providers.embeddings import get_embedding_provider
 from openbook.providers.llm import get_llm_provider
+from openbook.server.service import OpenBookService
 
 
 def _get_project_root(path: Optional[str]) -> Path:
     if path:
         return Path(path).resolve()
     return detect_project_root()
-
-
-def _lastrowid(cur: sqlite3.Cursor) -> int:
-    if cur.lastrowid is None:
-        raise RuntimeError("Insert did not return a row id")
-    return int(cur.lastrowid)
-
-
-def _get_or_create_project(conn: sqlite3.Connection, project_root: Path) -> int:
-    root_str = str(project_root.resolve())
-    row = conn.execute(
-        "SELECT id FROM projects WHERE root_path = ?", (root_str,)
-    ).fetchone()
-    if row:
-        return int(row["id"])
-    cur = conn.execute(
-        "INSERT INTO projects (root_path, name) VALUES (?, ?)",
-        (root_str, detect_project_name(project_root)),
-    )
-    return _lastrowid(cur)
-
-
-def _get_current_agent_id(conn: sqlite3.Connection, project_id: int) -> int:
-    client = os.environ.get("OPENBOOK_CLIENT", "cli")
-    agent_name = os.environ.get("OPENBOOK_AGENT", "openbook-cli")
-    hostname = os.environ.get("COMPUTERNAME", os.environ.get("HOSTNAME", "unknown"))
-    row = conn.execute(
-        "SELECT id FROM agents WHERE project_id = ? AND client_name = ? AND agent_name = ?",
-        (project_id, client, agent_name),
-    ).fetchone()
-    if row:
-        conn.execute(
-            "UPDATE agents SET last_seen_at = ? WHERE id = ?",
-            (time.time(), row["id"]),
-        )
-        return int(row["id"])
-    cur = conn.execute(
-        "INSERT INTO agents (project_id, client_name, agent_name, version, hostname, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (project_id, client, agent_name, "0.1.0", hostname, time.time(), time.time()),
-    )
-    return _lastrowid(cur)
-
-
-def _get_or_create_session(conn: sqlite3.Connection, project_id: int, agent_id: int) -> int:
-    pid = os.getpid()
-    cwd = str(Path.cwd().resolve())
-    client = os.environ.get("OPENBOOK_CLIENT", "cli")
-    cur = conn.execute(
-        "INSERT INTO sessions (project_id, agent_id, client_name, process_id, cwd, started_at, status) VALUES (?, ?, ?, ?, ?, ?, 'active')",
-        (project_id, agent_id, client, pid, cwd, time.time()),
-    )
-    return _lastrowid(cur)
 
 
 @click.group()
@@ -111,9 +44,7 @@ def init(path: str) -> None:
         click.echo(f"Path does not exist: {project_root}", err=True)
         sys.exit(1)
 
-    initialize_database(project_root)
-    Config.create_default(project_root)
-    ensure_openbookignore(project_root)
+    OpenBookService(project_root).initialize()
     click.echo(f"Initialized OpenBook at {project_root / '.openbook'}")
 
 
@@ -137,9 +68,7 @@ def setup(
 
     should_init = yes or click.confirm("Initialize OpenBook here?")
     if should_init:
-        initialize_database(project_root)
-        Config.create_default(project_root)
-        ensure_openbookignore(project_root)
+        OpenBookService(project_root).initialize()
         click.echo("Initialized OpenBook.")
     else:
         click.echo("Aborted.")
@@ -179,15 +108,8 @@ def remember_cmd(
     project: Optional[str],
 ) -> None:
     """Store a memory."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    agent_id = _get_current_agent_id(conn, project_id)
-
     status = "approved" if approve else "proposed"
-    memory_id = remember(
-        conn=conn,
-        project_id=project_id,
+    stored = OpenBookService(_get_project_root(project)).remember(
         content=content,
         memory_type=memory_type,
         title=title,
@@ -196,9 +118,8 @@ def remember_cmd(
         tags=list(tag),
         trust_score=trust,
         status=status,
-        agent_id=agent_id,
     )
-    click.echo(f"Stored memory {memory_id} ({status})")
+    click.echo(f"Stored memory {stored['memory_id']} ({status})")
 
 
 @cli.command("search")
@@ -219,21 +140,13 @@ def search_cmd(
     project: Optional[str],
 ) -> None:
     """Search memory and return compact results."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    agent_id = _get_current_agent_id(conn, project_id)
-
-    pack = build_context_pack(
-        conn=conn,
-        project_id=project_id,
+    pack = OpenBookService(_get_project_root(project)).search(
         query=query,
         budget=budget,
         chapter=chapter,
         memory_type=memory_type,
         tags=list(tag),
         include_raw=raw,
-        agent_id=agent_id,
     )
     click.echo(pack.to_text(include_raw=raw))
 
@@ -256,82 +169,40 @@ def smoke_test(project: Optional[str], multi_agent: bool) -> None:
 
 
 def _run_smoke_test(project_root: Path, *, multi_agent: bool = False) -> None:
-    initialize_database(project_root)
-    Config.create_default(project_root)
-    ensure_openbookignore(project_root)
-    conn = get_connection(project_root)
-    try:
-        project_id = _get_or_create_project(conn, project_root)
-        if multi_agent:
-            memory_id, pack = _run_multi_agent_smoke(project_root, project_id)
-        else:
-            memory_id = remember(
-                conn=conn,
-                project_id=project_id,
-                content="OpenBook smoke test memory: tests run with pytest -q.",
-                memory_type="command",
-                title="Smoke test command",
-                tags=["smoke-test"],
-                status="approved",
-            )
-            pack = build_context_pack(conn, project_id, "pytest smoke test", budget="tiny")
-    finally:
-        conn.close()
+    if multi_agent:
+        stored = OpenBookService(
+            project_root,
+            client="codex",
+            agent_name="openbook-smoke-writer",
+        ).remember(
+            content="OpenBook multi-agent smoke: shared service memory works across clients.",
+            memory_type="handoff",
+            title="Multi-agent smoke handoff",
+            tags=["smoke-test", "multi-agent"],
+            status="approved",
+        )
+        pack = OpenBookService(
+            project_root,
+            client="cursor",
+            agent_name="openbook-smoke-reader",
+        ).search("shared service memory across clients", budget="tiny")
+    else:
+        stored = OpenBookService(project_root).remember(
+            content="OpenBook smoke test memory: tests run with pytest -q.",
+            memory_type="command",
+            title="Smoke test command",
+            tags=["smoke-test"],
+            status="approved",
+        )
+        pack = OpenBookService(project_root).search("pytest smoke test", budget="tiny")
 
     if not pack.cards:
         raise click.ClickException("Smoke test failed: search returned no memories")
     click.echo(f"OpenBook smoke test passed at {project_root}")
-    click.echo(f"Stored memory: {memory_id}")
+    click.echo(f"Stored memory: {stored['memory_id']}")
     click.echo(f"Retrieved memories: {len(pack.cards)}")
     if multi_agent:
         click.echo("Multi-agent check: writer=openbook-smoke-writer reader=openbook-smoke-reader")
-
-
-def _run_multi_agent_smoke(project_root: Path, project_id: int) -> tuple[int, ContextPack]:
-    previous = {
-        "OPENBOOK_CLIENT": os.environ.get("OPENBOOK_CLIENT"),
-        "OPENBOOK_AGENT": os.environ.get("OPENBOOK_AGENT"),
-    }
-    try:
-        os.environ["OPENBOOK_CLIENT"] = "codex"
-        os.environ["OPENBOOK_AGENT"] = "openbook-smoke-writer"
-        writer_conn = get_connection(project_root)
-        try:
-            writer_agent_id = _get_current_agent_id(writer_conn, project_id)
-            memory_id = remember(
-                conn=writer_conn,
-                project_id=project_id,
-                content="OpenBook multi-agent smoke: shared SQLite memory works across clients.",
-                memory_type="handoff",
-                title="Multi-agent smoke handoff",
-                tags=["smoke-test", "multi-agent"],
-                status="approved",
-                agent_id=writer_agent_id,
-            )
-        finally:
-            writer_conn.close()
-
-        os.environ["OPENBOOK_CLIENT"] = "cursor"
-        os.environ["OPENBOOK_AGENT"] = "openbook-smoke-reader"
-        reader_conn = get_connection(project_root)
-        try:
-            reader_agent_id = _get_current_agent_id(reader_conn, project_id)
-            pack = build_context_pack(
-                reader_conn,
-                project_id,
-                "shared SQLite memory across clients",
-                budget="tiny",
-                agent_id=reader_agent_id,
-            )
-        finally:
-            reader_conn.close()
-        return memory_id, pack
-    finally:
-        for key, value in previous.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
 
 
 @cli.group("benchmark")
@@ -439,10 +310,7 @@ def benchmark_longmemeval() -> None:
 @click.option("--project", default=None)
 def brief(project: Optional[str]) -> None:
     """Return a small project briefing."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    info = get_project_brief(conn, project_id)
+    info = OpenBookService(_get_project_root(project)).brief()
     click.echo(f"# {info.get('project_name', 'Unknown')}")
     click.echo(f"Root: {info.get('root_path', '')}")
     click.echo("")
@@ -468,27 +336,7 @@ def brief(project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def handoff_cmd(to_hint: Optional[str], project: Optional[str]) -> None:
     """Create a next-agent handoff context pack."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    agent_id = _get_current_agent_id(conn, project_id)
-    session_id = _get_or_create_session(conn, project_id, agent_id)
-
-    # Build a handoff pack: recent approved memories across key chapters
-    pack = build_context_pack(
-        conn=conn,
-        project_id=project_id,
-        query="handoff context",
-        budget="tiny",
-        agent_id=agent_id,
-        session_id=str(session_id),
-    )
-    summary = pack.to_text()
-    conn.execute(
-        "INSERT INTO handoffs (project_id, from_agent_id, to_agent_hint, summary, context_pack_json) VALUES (?, ?, ?, ?, ?)",
-        (project_id, agent_id, to_hint, summary, json.dumps({"cards": [c.memory_id for c in pack.cards]})),
-    )
-    click.echo(summary)
+    click.echo(OpenBookService(_get_project_root(project)).handoff(to_agent_hint=to_hint).to_text())
 
 
 @cli.command("cite")
@@ -509,10 +357,6 @@ def cite_cmd(
     project: Optional[str],
 ) -> None:
     """Add a citation to a memory."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-
     line_start: Optional[int] = None
     line_end: Optional[int] = None
     if lines:
@@ -520,17 +364,14 @@ def cite_cmd(
         line_start = int(parts[0])
         line_end = int(parts[1]) if len(parts) > 1 else line_start
 
-    cur = conn.execute(
-        """
-        INSERT INTO citations (project_id, file_path, line_start, line_end, commit_hash, url, quote)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (project_id, file_path, line_start, line_end, commit, url, quote),
-    )
-    citation_id = cur.lastrowid
-    conn.execute(
-        "UPDATE memories SET citation_id = ? WHERE id = ? AND project_id = ?",
-        (citation_id, memory_id, project_id),
+    citation_id = OpenBookService(_get_project_root(project)).cite(
+        memory_id=memory_id,
+        file_path=file_path,
+        line_start=line_start,
+        line_end=line_end,
+        commit_hash=commit,
+        url=url,
+        quote=quote,
     )
     click.echo(f"Added citation {citation_id} to memory {memory_id}")
 
@@ -539,10 +380,7 @@ def cite_cmd(
 @click.option("--project", default=None)
 def review(project: Optional[str]) -> None:
     """Show memory proposals waiting for approval."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    queue = get_review_queue(conn, project_id)
+    queue = OpenBookService(_get_project_root(project)).review_queue()
     if not queue:
         click.echo("No pending proposals.")
         return
@@ -555,10 +393,7 @@ def review(project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def approve_cmd(memory_id: int, project: Optional[str]) -> None:
     """Approve a memory proposal."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    if approve_memory(conn, project_id, memory_id):
+    if OpenBookService(_get_project_root(project)).approve(memory_id):
         click.echo(f"Approved memory {memory_id}")
     else:
         click.echo(f"Memory {memory_id} not found.", err=True)
@@ -570,10 +405,7 @@ def approve_cmd(memory_id: int, project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def reject_cmd(memory_id: int, project: Optional[str]) -> None:
     """Reject a memory proposal."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    if reject_memory(conn, project_id, memory_id):
+    if OpenBookService(_get_project_root(project)).reject(memory_id):
         click.echo(f"Rejected memory {memory_id}")
     else:
         click.echo(f"Memory {memory_id} not found.", err=True)
@@ -586,10 +418,7 @@ def reject_cmd(memory_id: int, project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def delete_cmd(memory_id: int, hard: bool, project: Optional[str]) -> None:
     """Archive or delete a memory."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    if delete_memory(conn, project_id, memory_id, hard=hard):
+    if OpenBookService(_get_project_root(project)).delete(memory_id, hard=hard):
         action = "Deleted" if hard else "Archived"
         click.echo(f"{action} memory {memory_id}")
     else:
@@ -603,12 +432,10 @@ def delete_cmd(memory_id: int, hard: bool, project: Optional[str]) -> None:
 @click.option("--output", default=None)
 def export_cmd(json_export: bool, project: Optional[str], output: Optional[str]) -> None:
     """Generate Markdown/JSON human-readable exports."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
+    service = OpenBookService(_get_project_root(project))
 
     if json_export:
-        data = export_json(conn, project_id, project_root)
+        data = service.export_json()
         out = json.dumps(data, indent=2, default=str)
         if output:
             Path(output).write_text(out, encoding="utf-8")
@@ -616,8 +443,8 @@ def export_cmd(json_export: bool, project: Optional[str], output: Optional[str])
         else:
             click.echo(out)
     else:
-        out_dir = Path(output) if output else project_root / ".openbook" / "exports"
-        paths = export_all(conn, project_id, project_root, out_dir)
+        out_dir = Path(output) if output else service.project_root / ".openbook" / "exports"
+        paths = service.export_markdown(out_dir)
         for name, path in paths.items():
             click.echo(f"Exported {name}: {path}")
 
@@ -626,31 +453,20 @@ def export_cmd(json_export: bool, project: Optional[str], output: Optional[str])
 @click.option("--project", default=None)
 def doctor(project: Optional[str]) -> None:
     """Check database, config, providers, MCP setup, and concurrency mode."""
-    project_root = _get_project_root(project)
+    service = OpenBookService(_get_project_root(project))
+    project_root = service.project_root
+    database = service.database_diagnostics()
     click.echo(f"Project root: {project_root}")
-
-    openbook_dir = project_root / ".openbook"
-    click.echo(f".openbook exists: {openbook_dir.exists()}")
-
-    db_path = openbook_dir / "openbook.sqlite"
-    click.echo(f"Database exists: {db_path.exists()}")
-
-    config_path = openbook_dir / "config.toml"
-    click.echo(f"Config exists: {config_path.exists()}")
-
-    if db_path.exists():
-        conn = get_connection(project_root)
-        try:
-            row = conn.execute("PRAGMA journal_mode").fetchone()
-            click.echo(f"Journal mode: {row[0] if row else 'unknown'}")
-            row = conn.execute("SELECT COUNT(*) FROM projects").fetchone()
-            click.echo(f"Projects: {row[0]}")
-            row = conn.execute("SELECT COUNT(*) FROM memories").fetchone()
-            click.echo(f"Memories: {row[0]}")
-            row = conn.execute("SELECT COUNT(*) FROM review_queue WHERE status = 'pending'").fetchone()
-            click.echo(f"Pending reviews: {row[0]}")
-        except Exception as e:
-            click.echo(f"Database error: {e}", err=True)
+    click.echo(f".openbook exists: {database['openbook_exists']}")
+    click.echo(f"Database exists: {database['database_exists']}")
+    click.echo(f"Config exists: {database['config_exists']}")
+    if "journal_mode" in database:
+        click.echo(f"Journal mode: {database['journal_mode']}")
+        click.echo(f"Projects: {database['projects']}")
+        click.echo(f"Memories: {database['memories']}")
+        click.echo(f"Pending reviews: {database['pending_reviews']}")
+    if "database_error" in database:
+        click.echo(f"Database error: {database['database_error']}", err=True)
 
     config = Config.load(project_root)
     embed_provider = get_embedding_provider(config.section("embeddings"))
@@ -672,40 +488,29 @@ def doctor(project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def prune(older_than_days: int, min_trust: float, dry_run: bool, project: Optional[str]) -> None:
     """Remove stale, duplicate, or low-value memories."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    cutoff = time.time() - (older_than_days * 86400)
-
-    sql = "SELECT id, content FROM memories WHERE project_id = ? AND updated_at < ? AND trust_score < ? AND status != 'archived'"
-    rows = conn.execute(sql, (project_id, cutoff, min_trust)).fetchall()
+    result = OpenBookService(_get_project_root(project)).prune(
+        older_than_days=older_than_days,
+        min_trust=min_trust,
+        dry_run=dry_run,
+    )
+    rows = result["candidates"]
     click.echo(f"Found {len(rows)} memories to prune")
     if dry_run:
         for r in rows:
             click.echo(f"Would prune: {r['id']} {r['content'][:60]}")
         return
-    for r in rows:
-        conn.execute("UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ?", (time.time(), r["id"]))
-    click.echo(f"Pruned {len(rows)} memories")
+    click.echo(f"Pruned {result['pruned']} memories")
 
 
 @cli.command("reindex")
 @click.option("--project", default=None)
 def reindex(project: Optional[str]) -> None:
     """Rebuild FTS/vector indexes."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    _get_or_create_project(conn, project_root)
-
-    # Rebuild FTS
-    conn.execute("INSERT INTO memories_fts(memories_fts) VALUES ('rebuild')")
+    result = OpenBookService(_get_project_root(project)).reindex()
     click.echo("FTS index rebuilt.")
-
-    # Optionally reindex vectors if sqlite-vec is available
-    try:
-        conn.execute("SELECT vec_version()")
+    if result["vector_available"]:
         click.echo("sqlite-vec is available; vector reindex not yet implemented in MVP.")
-    except Exception:
+    else:
         click.echo("sqlite-vec not available; vector search disabled.")
 
 
@@ -748,30 +553,22 @@ def providers_test(project: Optional[str]) -> None:
 @click.option("--project", default=None)
 def agents_cmd(project: Optional[str]) -> None:
     """Show active/recent agent sessions."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    rows = conn.execute(
-        "SELECT * FROM agents WHERE project_id = ? ORDER BY last_seen_at DESC LIMIT 20",
-        (project_id,),
-    ).fetchall()
-    for r in rows:
-        click.echo(f"[{r['id']}] {r['client_name']} / {r['agent_name']} @ {r['hostname']} (last seen {r['last_seen_at']})")
+    for agent in OpenBookService(_get_project_root(project)).agents():
+        click.echo(
+            f"[{agent['id']}] {agent['client_name']} / {agent['agent_name']} "
+            f"@ {agent['hostname']} (last seen {agent['last_seen_at']})"
+        )
 
 
 @cli.command("sessions")
 @click.option("--project", default=None)
 def sessions_cmd(project: Optional[str]) -> None:
     """Show session history."""
-    project_root = _get_project_root(project)
-    conn = get_connection(project_root)
-    project_id = _get_or_create_project(conn, project_root)
-    rows = conn.execute(
-        "SELECT * FROM sessions WHERE project_id = ? ORDER BY started_at DESC LIMIT 20",
-        (project_id,),
-    ).fetchall()
-    for r in rows:
-        click.echo(f"[{r['id']}] pid={r['process_id']} cwd={r['cwd']} status={r['status']} started={r['started_at']}")
+    for session in OpenBookService(_get_project_root(project)).sessions():
+        click.echo(
+            f"[{session['id']}] pid={session['process_id']} cwd={session['cwd']} "
+            f"status={session['status']} started={session['started_at']}"
+        )
 
 
 @cli.group("runtime")
@@ -784,7 +581,8 @@ def runtime_group() -> None:
 @click.option("--project", default=None)
 def runtime_start(project: Optional[str]) -> None:
     """Start runtime daemon (MVP: not implemented)."""
-    click.echo("Runtime daemon start is not implemented in MVP. Direct SQLite access is the default.")
+    OpenBookService(_get_project_root(project)).initialize()
+    click.echo("Runtime daemon start is not implemented in MVP. OpenBookService is active in-process.")
 
 
 @runtime_group.command("stop")
@@ -796,7 +594,7 @@ def runtime_stop() -> None:
 @runtime_group.command("status")
 def runtime_status() -> None:
     """Check runtime daemon status (MVP: not implemented)."""
-    click.echo("Runtime daemon status: not running (direct mode)")
+    click.echo("Runtime daemon status: not running (OpenBookService in-process mode)")
 
 
 class DefaultGroup(click.Group):

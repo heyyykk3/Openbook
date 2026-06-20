@@ -10,7 +10,9 @@ my-app/
     openbook.sqlite
 ```
 
-Codex, Claude Code, Cursor, Gemini CLI, OpenCode, and other agents can all use this same memory.
+Codex, Claude Code, Cursor, Gemini CLI, OpenCode, and other agents should use
+the OpenBook service surface for this same memory. The service owns project
+setup, agent identity, sessions, database connections, and retrieval behavior.
 
 Run the no-key cross-agent smoke test:
 
@@ -19,7 +21,7 @@ openbook smoke-test --multi-agent
 ```
 
 This writes a memory as a simulated writer client and retrieves it as a simulated
-reader client from the same SQLite book.
+reader client through the same OpenBook service boundary.
 
 ## Concurrency Model
 
@@ -61,9 +63,14 @@ Append-only `events` table records:
 - Searches
 - Handoffs
 
-## Optional Daemon
+## Service Boundary
 
-For heavier multi-agent use, an optional runtime daemon can be started:
+The canonical runtime boundary is `OpenBookService`. MCP and CLI commands call
+that service instead of independently opening and managing the memory database.
+SQLite remains the local ledger behind the service; future HTTP or background
+daemon transports should route to the same service object.
+
+Daemon commands are reserved for process supervision:
 
 ```bash
 openbook runtime start
@@ -71,4 +78,5 @@ openbook runtime stop
 openbook runtime status
 ```
 
-In the MVP, direct SQLite access is the default and daemon mode is not yet implemented.
+In the MVP, `runtime` process supervision is not yet implemented, but agent-facing
+behavior is already routed through the service boundary.

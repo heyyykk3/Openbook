@@ -41,6 +41,7 @@ from openbook.providers.embeddings import (
     get_embedding_provider,
 )
 from openbook.providers.llm import GeminiLLMProvider, NoneLLMProvider, get_llm_provider
+from openbook.server.service import OpenBookService
 
 
 def _mcp_frame(message: dict[str, object]) -> bytes:
@@ -363,7 +364,7 @@ class TestMCPInstall:
         path = temp_project / ".cursor" / "mcp.json"
 
         assert result.mode == "write"
-        assert result.target == str(path)
+        assert Path(result.target).resolve() == path.resolve()
         assert path.exists()
         assert "OPENBOOK_PROJECT" in path.read_text(encoding="utf-8")
 
@@ -371,7 +372,7 @@ class TestMCPInstall:
         result = install_mcp_client("claude-code", temp_project)
 
         assert result.mode == "write"
-        assert result.target == str(temp_project / ".mcp.json")
+        assert Path(result.target).resolve() == (temp_project / ".mcp.json").resolve()
         assert (temp_project / ".mcp.json").exists()
 
     def test_codex_install_dry_run_prints_command(self, temp_project):
@@ -390,6 +391,26 @@ class TestMCPInstall:
 
         with pytest.raises(ValueError, match="Unknown tool"):
             _handle_tool("openbook_missing", {})
+
+    def test_mcp_uses_openbook_service_boundary(self, temp_project, monkeypatch):
+        monkeypatch.setenv("OPENBOOK_PROJECT", str(temp_project))
+        service = OpenBookService(temp_project, client="test", agent_name="service-writer")
+        stored = service.remember(
+            "Service boundary memory is visible through MCP search.",
+            memory_type="fact",
+            status="approved",
+            tags=["service-boundary"],
+        )
+
+        result = _handle_tool(
+            "openbook_search",
+            {"query": "service boundary mcp search", "budget": "tiny"},
+        )
+        status = _handle_tool("openbook_status", {})
+
+        assert stored["memory_id"] > 0
+        assert "Service boundary memory" in result
+        assert "Approved memories: 1" in status
 
     def test_mcp_stdio_initializes_and_lists_tools(self, tmp_path):
         root = tmp_path / "mcp-stdio-project"
